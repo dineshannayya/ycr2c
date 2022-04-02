@@ -55,21 +55,34 @@ end
  end
 **/
 
-  logic [31:0] test_count;
+  logic [31:0] pc_count;
+  logic [31:0] instr_count;
  `define RISC_CORE  i_top.i_core_top_0
  `define RISC_EXU  i_top.i_core_top_0.i_pipe_top.i_pipe_exu
+ `define RISC_IFU  i_top.i_core_top_0.i_pipe_top.i_pipe_ifu
 
  initial begin
-	 test_count = 0;
+	 pc_count    = 0;
+	 instr_count = 0;
  end
 
+ /**
+ always@(posedge `RISC_CORE.clk) begin
+	 if(rst_init) begin
+	     pc_count = 0;
+	 end else if(`RISC_EXU.pc_curr_upd) begin
+             $display("RISCV-DEBUG => Cnt: %x PC: %x", pc_count,`RISC_EXU.pc_curr_ff);
+             pc_count = pc_count+1;
+	  end
+ end
+ ***/
  
  always@(posedge `RISC_CORE.clk) begin
 	 if(rst_init) begin
-	     test_count = 0;
-	 end else if(`RISC_EXU.pc_curr_upd) begin
-             $display("RISCV-DEBUG => Cnt: %x PC: %x", test_count,`RISC_EXU.pc_curr_ff);
-             test_count <= test_count+1;
+	     instr_count = 0;
+	 end else if(`RISC_IFU.ifu2idu_vd_o & `RISC_IFU.idu2ifu_rdy_i) begin
+             $display("RISCV-DEBUG => Cnt: %x Instr: %x", instr_count,`RISC_IFU.ifu2idu_instr_o);
+             instr_count = instr_count+1;
 	  end
  end
 
@@ -144,9 +157,9 @@ always @(posedge clk) begin
 
 	        // Flush the content of dcache for signature validation at app
 	        // memory	
-	        force i_top.u_mintf.u_intf.u_dcache.cfg_force_flush = 1'b1;
-	        wait(i_top.u_mintf.u_intf.u_dcache.force_flush_done == 1'b1);
-	        release i_top.u_mintf.u_intf.u_dcache.cfg_force_flush;
+	        force i_top.u_intf.u_dcache.cfg_force_flush = 1'b1;
+	        wait(i_top.u_intf.u_dcache.force_flush_done == 1'b1);
+	        release i_top.u_intf.u_dcache.cfg_force_flush;
 		$display("STATUS: Checking Complaince Test Status .... ");
                 test_running <= 1'b0;
                 test_pass = 1;

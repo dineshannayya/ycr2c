@@ -192,12 +192,13 @@ localparam	IDLE		         = 4'd0,	//Please read Description for explanation of S
 		CACHE_RDATA_FETCH1       = 4'd2,
 		CACHE_RDATA_FETCH2       = 4'd3,
 		CACHE_RDATA_FETCH3       = 4'd4,
-		PREFETCH_WAIT            = 4'd5,
-		CACHE_REFILL_WAIT        = 4'd6,
-		CACHE_REFILL_DONE        = 4'd7,
-		CACHE_PREFILL_WAIT       = 4'd8,
-		CACHE_PREFILL_DONE       = 4'd9,
-		NEXT_CACHE_REFILL_REQ    = 4'd10;
+		PREFETCH_START           = 4'd5,
+		PREFETCH_WAIT            = 4'd6,
+		CACHE_REFILL_WAIT        = 4'd7,
+		CACHE_REFILL_DONE        = 4'd8,
+		CACHE_PREFILL_WAIT       = 4'd9,
+		CACHE_PREFILL_DONE       = 4'd10,
+		NEXT_CACHE_REFILL_REQ    = 4'd11;
 
 //// CACHE SRAM Memory I/F
 //logic                             cache_mem_clk0           ; // CLK
@@ -319,16 +320,12 @@ wire [CACHE_LINE_WD-1:0]  next_prefetch_ptr = prefetch_ptr[CACHE_LINE_WD-1:0] + 
 // Cache Controller State Machine and Logic
 
 
-// Generate Response saying request is accepted
-assign cpu_mem_req_ack = (state == IDLE) && (
-	           (!cfg_pfet_dis && cpu_mem_req && prefetch_val && 
-		     (cpu_mem_addr[31:2] == {cpu_addr_l[31:7], prefetch_ptr[CACHE_LINE_WD-1:0]})) ||
-                   ( cpu_mem_req && (cpu_mem_resp == 2'b00)));
 
 always@(posedge mclk or negedge rst_n)
 begin
    if(!rst_n)
    begin
+      cpu_mem_req_ack   <= '0;
       cpu_mem_rdata     <= '0;
       cpu_mem_resp      <= 2'b00;
 
@@ -364,34 +361,15 @@ begin
 	// if yes, pick the data from prefetch content
 	 if(!cfg_pfet_dis && cpu_mem_req && prefetch_val && 
 	     (cpu_mem_addr[31:2] == {cpu_addr_l[31:7], prefetch_ptr[CACHE_LINE_WD-1:0]})) begin
-	     // Ack with Prefect data
-              cpu_mem_rdata    <= ycr1_conv_wb2mem_rdata(cpu_mem_width,cpu_mem_addr[1:0], prefetch_data);
-	      if(cpu_mem_bl == 'h1)
-	          cpu_mem_resp     <= 2'b11; // Last Access
-	      else
-	          cpu_mem_resp     <= 2'b01;
-
-	      // Goahead for next data prefetech in same cache index
-	      cache_mem_addr1  <= {prefetch_index,next_prefetch_ptr[CACHE_LINE_WD-1:0]}; // Address for additional prefetch;
-	      prefetch_ptr     <= next_prefetch_ptr+1;
-	      cpu_width_l      <= cpu_mem_width;
-              cpu_bl_l         <= cpu_mem_bl-1;
-              cpu_addr_l[31:2] <= cpu_mem_addr[31:2]+1;
-              cpu_addr_l[1:0]  <= 2'b0; // Next data will be 32 bit aligned access
-	      if(&cpu_mem_addr[6:2] && cpu_mem_bl > 'h1) begin //cache line change over
-	          cache_mem_csb1   <= 1'b1;
-	          state            <= TAG_COMPARE;
-	      end else begin
-	          cache_mem_csb1   <= 1'b0;
-	          state            <= PREFETCH_WAIT;
-	      end
-
+             cpu_mem_req_ack  <= '1;
+	     state            <= PREFETCH_START;
          end else begin
 	    cpu_mem_resp      <= 2'b00;
 	    cache_mem_addr1   <= '0;
 	    cache_mem_csb1    <= 1'b1;
 
 	    if(cpu_mem_req && (cpu_mem_resp == 2'b00)) begin
+                cpu_mem_req_ack  <= '1;
 	        cpu_addr_l       <= cpu_mem_addr;
 		cpu_width_l      <= cpu_mem_width;
 		cpu_bl_l         <= cpu_mem_bl;
@@ -417,6 +395,7 @@ begin
       //----------------------------------------------------
 
       TAG_COMPARE	:begin
+         cpu_mem_req_ack  <= '0;
 	 cpu_mem_resp     <= 2'b00; // Disable Ack
          case(cache_hit)
 	 1'd0:begin // If there is no Tag Hit
@@ -478,6 +457,29 @@ begin
 	  cpu_mem_resp     <= 2'b00;
 	  state            <= IDLE;
        end
+       PREFETCH_START: begin
+              cpu_mem_req_ack  <= '0;
+              cpu_mem_rdata    <= ycr1_conv_wb2mem_rdata(cpu_mem_width,cpu_mem_addr[1:0], prefetch_data);
+	      if(cpu_mem_bl == 'h1)
+	          cpu_mem_resp     <= 2'b11; // Last Access
+	      else
+	          cpu_mem_resp     <= 2'b01;
+
+	      // Goahead for next data prefetech in same cache index
+	      cache_mem_addr1  <= {prefetch_index,next_prefetch_ptr[CACHE_LINE_WD-1:0]}; // Address for additional prefetch;
+	      prefetch_ptr     <= next_prefetch_ptr+1;
+	      cpu_width_l      <= cpu_mem_width;
+              cpu_bl_l         <= cpu_mem_bl-1;
+              cpu_addr_l[31:2] <= cpu_mem_addr[31:2]+1;
+              cpu_addr_l[1:0]  <= 2'b0; // Next data will be 32 bit aligned access
+	      if(&cpu_mem_addr[6:2] && cpu_mem_bl > 'h1) begin //cache line change over
+	          cache_mem_csb1   <= 1'b1;
+	          state            <= TAG_COMPARE;
+	      end else begin
+	          cache_mem_csb1   <= 1'b0;
+	          state            <= PREFETCH_WAIT;
+	      end
+	end
 
        // Additional Prefetch delay do to take care of RAM Two cycle access
        PREFETCH_WAIT: begin

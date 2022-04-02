@@ -371,7 +371,10 @@ ycr2_top_wb i_top (
     .rst_n                  (rst_n                  ),
     .cpu_core_rst_n         ({1'b0,rst_n}           ),
     .cpu_intf_rst_n         (rst_n                  ),
-    .core_debug_sel         ('h0                    ),
+    .core_debug_sel         (2'h0                   ),
+    .cfg_sram_lphase        (4'hF                   ),
+    .cfg_cache_ctrl         (3'b0                   ),
+
 `ifdef YCR_DBG_EN
     .sys_rst_n_o            (                       ),
     .sys_rdc_qlfy_o         (                       ),
@@ -383,7 +386,7 @@ ycr2_top_wb i_top (
     .riscv_debug            (                       ),
 
     // Fuses
-    .fuse_mhartid           (fuse_mhartid           ),
+    //.fuse_mhartid           (fuse_mhartid           ),
 `ifdef YCR_DBG_EN
     .fuse_idcode            (`YCR_TAP_IDCODE       ),
 `endif // YCR_DBG_EN

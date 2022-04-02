@@ -57,9 +57,8 @@ module ycr_core_top (
     input   logic                                   pwrup_rst_n,                // Power-Up reset
     input   logic                                   rst_n,                      // Regular reset
     input   logic                                   cpu_rst_n,                  // CPU reset
-    input   logic                                   test_mode,                  // DFT Test Mode
-    input   logic                                   test_rst_n,                 // DFT Test Reset
     input   logic                                   clk,                        // Core clock
+    output  logic                                   clk_o,                      // Core clock
     output  logic                                   core_rst_n_o,               // Core reset
     output  logic                                   core_rdc_qlfy_o,            // Core RDC qualifier
     output  logic   [48:0]                          core_debug  ,
@@ -70,49 +69,48 @@ module ycr_core_top (
 
     input   logic [1:0]                             core_uid,        // Unique Core Id 
 `ifdef YCR_DBG_EN
-    input   logic [31:0]                            tapc_fuse_idcode_i,         // Fuse IDCODE value
+    input   logic [31:0]                            tapc_fuse_idcode_i,       // Fuse IDCODE value
 `endif // YCR_DBG_EN
 
     // IRQ
 `ifdef YCR_IPIC_EN
-    input   logic [YCR_IRQ_LINES_NUM-1:0]          core_irq_lines_i,           // External interrupt request lines
+    input   logic [YCR_IRQ_LINES_NUM-1:0]          core_irq_lines_i,         // External interrupt request lines
 `else
-    input   logic                                   core_irq_ext_i,             // External interrupt request
+    input   logic                                   core_irq_ext_i,          // External interrupt request
 `endif // YCR_IPIC_EN
-    input   logic                                   core_irq_soft_i,            // Software generated interrupt request
-    input   logic                                   core_irq_mtimer_i,          // Machine timer interrupt request
+    input   logic                                   core_irq_soft_i,         // Software generated interrupt request
+    input   logic                                   core_irq_mtimer_i,       // Machine timer interrupt request
 
     // Memory-mapped external timer
-    input   logic [63:0]                            core_mtimer_val_i,          // Machine timer value
+    input   logic [63:0]                            core_mtimer_val_i,       // Machine timer value
 
 `ifdef YCR_DBG_EN
     // Debug Interface
-    input   logic                                   tapc_trst_n,                // Test Reset (TRSTn)
-    input   logic                                   tapc_tck,                   // Test Clock (TCK)
-    input   logic                                   tapc_tms,                   // Test Mode Select (TMS)
-    input   logic                                   tapc_tdi,                   // Test Data Input (TDI)
-    output  logic                                   tapc_tdo,                   // Test Data Output (TDO)
-    output  logic                                   tapc_tdo_en,                // TDO Enable, signal for TDO buffer control
+    input   logic                                   tapc_tck,                // Test Clock (TCK)
+    input   logic                                   tapc_tms,                // Test Mode Select (TMS)
+    input   logic                                   tapc_tdi,                // Test Data Input (TDI)
+    output  logic                                   tapc_tdo,                // Test Data Output (TDO)
+    output  logic                                   tapc_tdo_en,             // TDO Enable, signal for TDO buffer control
 `endif // YCR_DBG_EN
 
     // Instruction Memory Interface
-    input   logic                                   imem2core_req_ack_i,        // IMEM request acknowledge
-    output  logic                                   core2imem_req_o,            // IMEM request
-    output  logic                                   core2imem_cmd_o,            // IMEM command
-    output  logic [`YCR_IMEM_AWIDTH-1:0]           core2imem_addr_o,           // IMEM address
-    output  logic [`YCR_IMEM_BSIZE-1:0]            core2imem_bl_o,           // IMEM address
-    input   logic [`YCR_IMEM_DWIDTH-1:0]           imem2core_rdata_i,          // IMEM read data
-    input   logic [1:0]                             imem2core_resp_i,           // IMEM response
+    input   logic                                   imem2core_req_ack_i,      // IMEM request acknowledge
+    output  logic                                   core2imem_req_o,          // IMEM request
+    output  logic                                   core2imem_cmd_o,          // IMEM command
+    output  logic [`YCR_IMEM_AWIDTH-1:0]            core2imem_addr_o,         // IMEM address
+    output  logic [`YCR_IMEM_BSIZE-1:0]             core2imem_bl_o,           // IMEM address
+    input   logic [`YCR_IMEM_DWIDTH-1:0]            imem2core_rdata_i,        // IMEM read data
+    input   logic [1:0]                             imem2core_resp_i,         // IMEM response
 
     // Data Memory Interface
-    input   logic                                   dmem2core_req_ack_i,        // DMEM request acknowledge
-    output  logic                                   core2dmem_req_o,            // DMEM request
-    output  logic                                   core2dmem_cmd_o,            // DMEM command
-    output  logic[1:0]                             core2dmem_width_o,          // DMEM data width
-    output  logic [`YCR_DMEM_AWIDTH-1:0]           core2dmem_addr_o,           // DMEM address
-    output  logic [`YCR_DMEM_DWIDTH-1:0]           core2dmem_wdata_o,          // DMEM write data
-    input   logic [`YCR_DMEM_DWIDTH-1:0]           dmem2core_rdata_i,          // DMEM read data
-    input   logic [1:0]                             dmem2core_resp_i            // DMEM response
+    input   logic                                   dmem2core_req_ack_i,      // DMEM request acknowledge
+    output  logic                                   core2dmem_req_o,          // DMEM request
+    output  logic                                   core2dmem_cmd_o,          // DMEM command
+    output  logic[1:0]                              core2dmem_width_o,        // DMEM data width
+    output  logic [`YCR_DMEM_AWIDTH-1:0]            core2dmem_addr_o,         // DMEM address
+    output  logic [`YCR_DMEM_DWIDTH-1:0]            core2dmem_wdata_o,        // DMEM write data
+    input   logic [`YCR_DMEM_DWIDTH-1:0]            dmem2core_rdata_i,        // DMEM read data
+    input   logic [1:0]                             dmem2core_resp_i          // DMEM response
 );
 
 //-------------------------------------------------------------------------------
@@ -126,6 +124,7 @@ localparam int unsigned YCR_CORE_TOP_RST_SYNC_STAGES_NUM               = 2;
 
 // Reset Logic
 `ifdef YCR_DBG_EN
+logic                                           tapc_trst_n;             // Test Reset (TRSTn)
 `else // YCR_DBG_EN
 logic                                           core_rst_n_in_sync;
 logic                                           core_rst_n_qlfy;
@@ -219,8 +218,19 @@ logic                                           clk_dbgc;
 logic                                           clk_alw_on;
 `endif // YCR_CLKCTRL_EN
 
+//-------------------------------------------------------------------------------
+// Local parameters
+//-------------------------------------------------------------------------------
+localparam int unsigned YCR_CLUSTER_TOP_RST_SYNC_STAGES_NUM            = 2;
+
+
+// CORE HART ID
 wire logic [`YCR_XLEN-1:0]        core_fuse_mhartid_i = {30'h0,core_uid}; // Fuse MHARTID value
 
+
+wire  test_mode = 1'b0;
+wire  test_rst_n = 1'b0;
+assign clk_o = clk;
 //-------------------------------------------------------------------------------
 // Reset Logic
 //-------------------------------------------------------------------------------
@@ -272,10 +282,44 @@ assign pwrup_rst_n_sync = pwrup_rst_n;
 
 `else // YCR_DBG_EN
 
-// Reset inputs are assumed synchronous
-assign pwrup_rst_n_sync   = pwrup_rst_n;
-assign rst_n_sync         = rst_n;
-assign cpu_rst_n_sync     = cpu_rst_n;
+//-------------------------------------------------------------------------------
+// Reset logic
+//-------------------------------------------------------------------------------
+// Power-Up Reset synchronizer
+ycr_reset_sync_cell #(
+    .STAGES_AMOUNT       (YCR_CLUSTER_TOP_RST_SYNC_STAGES_NUM)
+) i_pwrup_rstn_reset_sync (
+    .rst_n          (pwrup_rst_n     ),
+    .clk            (clk             ),
+    .test_rst_n     (test_rst_n      ),
+    .test_mode      (test_mode       ),
+    .rst_n_in       (1'b1            ),
+    .rst_n_out      (pwrup_rst_n_sync)
+);
+
+// Regular Reset synchronizer
+ycr_reset_sync_cell #(
+    .STAGES_AMOUNT       (YCR_CLUSTER_TOP_RST_SYNC_STAGES_NUM)
+) i_rstn_reset_sync (
+    .rst_n          (pwrup_rst_n     ),
+    .clk            (clk        ),
+    .test_rst_n     (test_rst_n      ),
+    .test_mode      (test_mode       ),
+    .rst_n_in       (rst_n           ),
+    .rst_n_out      (rst_n_sync      )
+);
+
+// Regular Reset synchronizer
+ycr_reset_sync_cell #(
+    .STAGES_AMOUNT       (YCR_CLUSTER_TOP_RST_SYNC_STAGES_NUM)
+) i_cpu_rstn_sync (
+    .rst_n          (pwrup_rst_n     ),
+    .clk            (clk        ),
+    .test_rst_n     (test_rst_n      ),
+    .test_mode      (test_mode       ),
+    .rst_n_in       (cpu_rst_n       ),
+    .rst_n_out      (cpu_rst_n_sync  )
+);
 assign core_rst_n_in_sync = rst_n_sync & cpu_rst_n_sync;
 
 // Core Reset: core_rst_n
@@ -298,6 +342,16 @@ ycr_data_sync_cell #(
     .data_in             (core_rst_n_status     ),
     .data_out            (core_rst_n_status_sync)
 );
+
+`ifdef YCR_DBG_EN
+// TAPC Reset
+ycr_reset_and2_cell i_tapc_rstn_and2_cell (
+    .rst_n_in       ({trst_n, pwrup_rst_n}),
+    .test_rst_n     (test_rst_n      ),
+    .test_mode      (test_mode       ),
+    .rst_n_out      (tapc_trst_n     )
+);
+`endif // YCR_DBG_EN
 
 assign core_rst_status      = ~core_rst_n_status_sync;
 assign core_rdc_qlfy_o      = core_rst_n_qlfy;

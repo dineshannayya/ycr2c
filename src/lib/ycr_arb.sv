@@ -64,13 +64,15 @@
 ////                                                              ////
 //////////////////////////////////////////////////////////////////////
 
+// Note: This logic assumes there are 8 Request 
 
 module ycr_arb(
 	input logic        clk, 
 	input logic        rstn, 
-	input logic [1:0]  req,  // Request
-	input logic        ack,  // Ack
-	output logic [1:0] gnt   // Grant
+	input logic [3:0]  req,  // Request
+	input logic        req_ack,  // Request
+	input logic        lack,  // Ack
+	output logic [3:0] gnt   // Grant
        );
 
 ///////////////////////////////////////////////////////////////////////
@@ -79,20 +81,23 @@ module ycr_arb(
 //
 
 
-parameter       FSM_GRANT0 = 2'b00,
-                FSM_GRANT1 = 2'b01,
-                WAIT_ACK   = 2'b10;
+parameter       FSM_GRANT      = 2'b00,
+                WAIT_REQ_ACK   = 2'b01,
+                WAIT_LACK      = 2'b10;
 
-parameter       GRANT0     = 2'b00;
-parameter       GRANT1     = 2'b01;
-parameter       GRANTX     = 2'b11;
+parameter       GRANT0     = 3'b000;
+parameter       GRANT1     = 3'b001;
+parameter       GRANT2     = 3'b010;
+parameter       GRANT3     = 3'b011;
+parameter       GRANTX     = 3'b111;
 
 ///////////////////////////////////////////////////////////////////////
 // Local Registers and Wires
 //////////////////////////////////////////////////////////////////////
 
-reg [1:0]	state, gstate, next_state,next_gstate;
-reg [1:0]       gnt_int;
+reg [1:0]     	state, next_state;
+reg [2:0]       next_gnt;
+reg [1:0]       ngnt,next_ngnt; // 1 Bit less than gnt to take care of roll over
 
 ///////////////////////////////////////////////////////////////////////
 //  Misc Logic 
@@ -101,13 +106,13 @@ reg [1:0]       gnt_int;
 
 always@(posedge clk or negedge rstn)
     if(!rstn) begin
-       state <= FSM_GRANT0;
-       gstate<= FSM_GRANT0;
-       gnt <= GRANTX;
+       state   <= FSM_GRANT;
+       gnt     <= GRANTX;
+       ngnt    <= GRANT0;
     end else begin		
-            gnt    <= gnt_int;
-	    state  <= next_state;
-	    gstate <= next_gstate;
+       gnt      <= next_gnt;
+       ngnt     <= next_ngnt;
+       state    <= next_state;
     end
 
 ///////////////////////////////////////////////////////////////////////
@@ -118,47 +123,67 @@ always@(posedge clk or negedge rstn)
 //   - parks at last grant
 //////////////////////////////////////////////////////////////////////
 
+logic [3:0] grnt_tmp;
+
 always_comb
    begin
-      gnt_int       = gnt;
+      grnt_tmp      = 'h0;
+      next_gnt      = gnt;
+      next_ngnt     = ngnt;       
       next_state    = state;	// Default Keep State
-      next_gstate   = gstate;       
       case(state)		
-	 FSM_GRANT0: begin
-      	// if this req is dropped or next is asserted, check for other req's
-	     if(req[0] ) begin
-	     	gnt_int      = GRANT0;
-	     	next_gstate  = FSM_GRANT1; // Next Priority Grant State
-	     	next_state   = WAIT_ACK;
-	     end else if(req[1]) begin
-	     	gnt_int      = GRANT1;
-	     	next_gstate  = FSM_GRANT0;  // Next Priority Grant State
-	     	next_state   = WAIT_ACK;
-	     end else begin
-	     	gnt_int      = GRANTX;
-	     end
+	 FSM_GRANT: begin
+	     grnt_tmp = get_gnt({req,req},ngnt);
+	     // Switch state only on req_ack, 
+	     // To take care of case, where risc core can abrutly can
+	     // de-assert req, do take care of jump cases
+	     if(grnt_tmp != GRANTX) begin
+		 next_gnt  = {1'b0,grnt_tmp[1:0]};
+		 if(req_ack) begin
+	            grnt_tmp =  next_gnt+1;
+		    next_ngnt =   grnt_tmp[1:0];
+	     	    next_state   = WAIT_LACK;
+	         end else begin
+	     	    next_state   = WAIT_REQ_ACK;
+	         end
+	     end 
       	end
-	FSM_GRANT1: begin
-      	// if this req is dropped or next is asserted, check for other req's
-	     if(req[1] ) begin
-	     	gnt_int      = GRANT1;
-	     	next_gstate  = FSM_GRANT0;  // Next Priority Grant State
-	     	next_state   = WAIT_ACK;
-	     end else if(req[0]) begin
-	     	gnt_int      = GRANT0;
-	     	next_gstate  = FSM_GRANT1;  // Next Priority Grant State
-	     	next_state   = WAIT_ACK;
-	     end else begin
-	     	gnt_int      = GRANTX;
-	     end
+	 WAIT_REQ_ACK: begin
+	      if(req_ack) begin
+	         grnt_tmp      =next_gnt+1;
+		 next_ngnt    = grnt_tmp[1:0];
+	     	 next_state   = WAIT_LACK;
+	      end else if(req[gnt] == 0) begin // Exit if request is abortly removed
+	     	 next_state   = FSM_GRANT;
+	     end 
       	end
-	WAIT_ACK : begin
-		if(ack) begin
-	     	    gnt_int      = GRANTX;
-	     	    next_state   = next_gstate;
+	WAIT_LACK : begin
+		if(lack) begin
+	     	    next_gnt     = GRANTX;
+	     	    next_state   = FSM_GRANT;
 		end
 	end
       endcase
    end
+
+
+function [2:0] get_gnt;
+input [15:0] req; // 2*N request
+input [2:0]  cur_gnt; // current grnt id
+begin
+   if(req[cur_gnt]+0 ) begin
+   	get_gnt      = cur_gnt;
+   end else if(req[cur_gnt+1]) begin
+   	get_gnt      = cur_gnt+1;
+   end else if(req[cur_gnt+2]) begin
+   	get_gnt      = cur_gnt+2;
+   end else if(req[cur_gnt+3]) begin
+   	get_gnt      = cur_gnt+3;
+   end else begin
+   	get_gnt      = GRANTX;
+   end
+end
+endfunction
+
 
 endmodule 

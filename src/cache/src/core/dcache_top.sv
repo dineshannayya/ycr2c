@@ -212,16 +212,17 @@ localparam	IDLE		         = 4'h0,	//Please read Description for explanation of S
 		CACHE_RDATA_FETCH1       = 4'h2,
 		CACHE_RDATA_FETCH2       = 4'h3,
 		CACHE_RDATA_FETCH3       = 4'h4,
-		PREFETCH_WAIT            = 4'h5,
-		CACHE_REFILL_REQ         = 4'h6,
-		CACHE_REFILL_ACTION	 = 4'h7,
-		CACHE_WRITE_BACK         = 4'h8,
-		CACHE_WRITE_BACK_ACTION1 = 4'h9,
-		CACHE_WRITE_BACK_ACTION2 = 4'hA,
-	        CACHE_PREFILL_REQ        = 4'hB,
-	        CACHE_PREFILL_ACTION     = 4'hC,
-	        CACHE_FLUSH_ACTION       = 4'hD,
-	        CACHE_FLUSH_ACTION1      = 4'hE;
+		PREFETCH_START           = 4'h5,
+		PREFETCH_WAIT            = 4'h6,
+		CACHE_REFILL_REQ         = 4'h7,
+		CACHE_REFILL_ACTION	 = 4'h8,
+		CACHE_WRITE_BACK         = 4'h9,
+		CACHE_WRITE_BACK_ACTION1 = 4'hA,
+		CACHE_WRITE_BACK_ACTION2 = 4'hB,
+	        CACHE_PREFILL_REQ        = 4'hC,
+	        CACHE_PREFILL_ACTION     = 4'hD,
+	        CACHE_FLUSH_ACTION       = 4'hE,
+	        CACHE_FLUSH_ACTION1      = 4'hF;
 
 //// CACHE SRAM Memory I/F
 //logic                             cache_mem_clk0           ; // CLK
@@ -410,11 +411,6 @@ assign cache_hit = |tag_hit;
 
 wire [$clog2(CACHESIZE)-1:0]  next_prefetch_ptr = prefetch_ptr[4:0] + 1;
 
-// Generate Response saying request is accepted
-assign cpu_mem_req_ack = (state == IDLE) && (
-	           (!cfg_pfet_dis && cpu_mem_req && (!cpu_mem_cmd) && prefetch_val && 
-		     (cpu_mem_addr[31:2] == {cpu_addr_l[31:7], prefetch_ptr[4:0]})) ||
-                   ( cpu_mem_req && (cpu_mem_resp == 2'b00)));
 
 // Cache Controller State Machine and Logic
 
@@ -425,6 +421,7 @@ always@(posedge mclk or negedge rst_n)
 begin
    if(!rst_n)
    begin
+      cpu_mem_req_ack   <= '0;
       cpu_mem_rdata      <= '0;
       cpu_mem_resp      <= 2'b00;
 
@@ -500,15 +497,8 @@ begin
 	// if yes, pick the data from prefetch content
 	 if(!cfg_pfet_dis && cpu_mem_req && (!cpu_mem_cmd) && prefetch_val && 
 	     (cpu_mem_addr[31:2] == {cpu_addr_l[31:7], prefetch_ptr[4:0]})) begin
-	     // Ack with Prefect data
-              cpu_mem_rdata     <= ycr1_conv_wb2mem_rdata(cpu_mem_width,cpu_mem_addr[1:0], prefetch_data);
-	      cpu_mem_resp     <= 2'b01;
-
-	      // Goahead for next data prefetech in same cache index
-	      cache_mem_addr1  <= {prefetch_index,next_prefetch_ptr[4:0]}; // Address for additional prefetch;
-	      cache_mem_csb1   <= 1'b0;
-	      prefetch_ptr     <= next_prefetch_ptr;
-	      state            <= PREFETCH_WAIT;
+	      cpu_mem_req_ack  <= 1'b1;
+	      state            <= PREFETCH_START;
 
          end else begin
 	    cpu_mem_resp      <= 2'b00;
@@ -521,6 +511,7 @@ begin
 	        cpu_width_l      <= cpu_mem_width;
 	        cpu_be_l         <= ycr1_conv_mem2wb_be(cpu_mem_width,cpu_mem_addr[1:0]);
 		prefetch_val     <= 1'b0;
+	        cpu_mem_req_ack  <= 1'b1;
 	        state            <= TAG_COMPARE;
 	     end else if(cfg_force_flush && !force_flush_done) begin
 		flush_loc_cnt    <= 'h0;
@@ -534,6 +525,7 @@ begin
       end
 
       TAG_COMPARE	:begin
+	 cpu_mem_req_ack  <= 1'b0;
          case(cache_hit)
 	 1'd0:begin // If there is no Tag Hit
 	    cache_mem_offset <= tag_cur_loc;
@@ -606,6 +598,19 @@ begin
           prefetch_val     <= 1'b1;
 	  cpu_mem_resp     <= 2'b00;
 	  state            <= IDLE;
+       end
+
+       PREFETCH_START: begin
+	      cpu_mem_req_ack = 1'b0;
+	     // Ack with Prefect data
+              cpu_mem_rdata     <= ycr1_conv_wb2mem_rdata(cpu_mem_width,cpu_mem_addr[1:0], prefetch_data);
+	      cpu_mem_resp     <= 2'b01;
+
+	      // Goahead for next data prefetech in same cache index
+	      cache_mem_addr1  <= {prefetch_index,next_prefetch_ptr[4:0]}; // Address for additional prefetch;
+	      cache_mem_csb1   <= 1'b0;
+	      prefetch_ptr     <= next_prefetch_ptr;
+	      state            <= PREFETCH_WAIT;
        end
 
        // Additional Prefetch delay do to RAM access is take effectly two

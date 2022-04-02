@@ -1,8 +1,8 @@
 //////////////////////////////////////////////////////////////////////////////
 // SPDX-FileCopyrightText: 2021, Dinesh Annayya                           ////
 //                                                                        ////
-// Licensed under the Apache License, Version 2.0 (the "License");        ////
-// you may not use this file except in compliance with the License.       ////
+// Licenseunder the Apache License, Vers2.0(the "License");               ////
+// you maynot use this file except in compliance with the License.       ////
 // You may obtain a copy of the License at                                ////
 //                                                                        ////
 //      http://www.apache.org/licenses/LICENSE-2.0                        ////
@@ -17,22 +17,22 @@
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 ////                                                                      ////
-////  yifive Single core RISCV Top                                        ////
+////  yifive Four core RISCV Top                                          ////
 ////                                                                      ////
 ////  This file is part of the yifive cores project                       ////
-////  https://github.com/dineshannayya/ycr1.git                           ////
+////  https://github.com/dineshannayya/ycr4.git                           ////
 ////                                                                      ////
 ////  Description:                                                        ////
-////     integrated wishbone i/f to instruction/data memory               ////
+////     integrated 4 Risc core with instruction/data memory & wb         ////
 ////                                                                      ////
 ////  To Do:                                                              ////
 ////    nothing                                                           ////
 ////                                                                      ////
-////  Author(s):                                                          ////
-////      - Dinesh Annayya, dinesha@opencores.org                         ////
+////  Authors:                                                            ////
+////      Dinesh Annayya, dinesha@opencores.org                           ////
 ////                                                                      ////
 ////  CPU Memory Map:                                                     ////
-////            0x0000_0000 to 0x07FF_FFFF (128MB) - ICACHE               ////
+////            0x0000_0000 to 0x07FF_FF(128MB) - ICACHE                  ////
 ////            0x0800_0000 to 0x0BFF_FFFF (64MB)  - DCACHE               ////
 ////            0x0C48_0000 to 0x0C48_FFFF (64K)   - TCM SRAM             ////
 ////            0x0C49_0000 to 0x0C49_000F (16)    - TIMER                ////
@@ -65,7 +65,27 @@
 ////     1.5:   Feb 21, 2022, Dinesh A                                    ////
 ////            Two Risc core is integrated with common interface block   ////
 ////     1.6:   Mar 14, 2022, Dinesh A                                    ////
-////            fuse_mhartid is internally tied                           ////////                                                                      ////
+////            fuse_mhartid is internally tied                           ////
+////     1.8:   Mar 28, 2022, Dinesh A                                    ////
+////            Pipe line imem request generation is removed in           ////
+////            ycr_pipe_ifu.sv and when ever there there is clash between////
+////            current request and new change of addres request, new     ////
+////            address will be holded and updated only at the end of     ////
+////            pending transaction                                       ////
+////     1.9:   Mar 29, 2022, Dinesh A                                    ////
+////            To break the timing path, once cycle gap assumed between  ////
+////            core request to slave ack, following files are modified   ////
+////     	    src/cache/src/core/dcache_top.sv                      ////
+////     	    src/cache/src/core/icache_top.sv                      ////
+////     	    src/core/pipeline/ycr_pipe_ifu.sv                     ////
+////     	    src/top/ycr_dmem_router.sv                            ////
+////     	    src/top/ycr_dmem_wb.sv                                ////
+////     	    src/top/ycr_tcm.sv                                    ////
+////            Synth and sta script are clean-up                         ////
+////     2.0:  April 1, 2022, Dinesh A                                    ////
+////           As sky130 SRAM timining library are not accurate, added    ////
+////           Write interface lanuch phase selection                     ////  
+////                                                                      ////
 //////////////////////////////////////////////////////////////////////////////
 
 `include "ycr_arch_description.svh"
@@ -79,37 +99,39 @@
  `define YCR_IMEM_ROUTER_EN
 `endif // YCR_TCM_EN
 
-module ycr2_top_wb            (
+module ycr2_top_wb                      (
 
 `ifdef USE_POWER_PINS
-         input logic            vccd1,    // User area 1 1.8V supply
-         input logic            vssd1,    // User area 1 digital ground
+         input logic                          vccd1,    // User area 1 1.8V supply
+         input logic                          vssd1,    // User area 1 digital ground
 `endif
-    input  logic   [3:0]                 cfg_cska_riscv,
-    input  logic                         wbd_clk_int,
-    output logic                         wbd_clk_riscv,
+         input  logic   [3:0]                 cfg_cska_riscv,
+         input  logic                         wbd_clk_int,
+         output logic                         wbd_clk_riscv,
 
     // Control
-    input   logic                        pwrup_rst_n,            // Power-Up Reset
-    input   logic                        rst_n,                  // Regular Reset signal
-    input   logic [`YCR_NUMCORES-1:0]    cpu_core_rst_n,         // CPU Reset (Core Reset                                                                        )
-    input   logic                        cpu_intf_rst_n,         // CPU interface reset
-    input   logic [1:0]                  core_debug_sel,         // core debug selection
-    // input   logic                     test_mode,              // Test mode - unused
-    // input   logic                     test_rst_n,             // Test mode's reset - unused
-    input   logic                        core_clk,               // Core clock
-    input   logic                        rtc_clk,                // Real-time clock
-    output  logic [63:0]                 riscv_debug,
+    input   logic                             pwrup_rst_n,            // Power-Up Reset
+    input   logic                             rst_n,                  // Regular Reset signal
+    input   logic [`YCR_NUMCORES-1:0]         cpu_core_rst_n,         // CPReset (Core Reset )
+    input   logic                             cpu_intf_rst_n,         // CPU interface reset
+    input   logic [1:0]                       core_debug_sel,         // core debug selection
+    input   logic [3:0]                       cfg_sram_lphase,
+    input   logic [2:0]                       cfg_cache_ctrl,
+    // input   logic                          test_mode,              // Test mode - unused
+    // input   logic                          test_rst_n,             // Test mode's reset - unused
+    input   logic                             core_clk,               // Core clock
+    input   logic                             rtc_clk,                // Real-time clock
+    output  logic [63:0]                      riscv_debug,
 `ifdef YCR_DBG_EN
-    output  logic                        sys_rst_n_o,            // External System Reset output
-                                                                 //   (for the processor cluster's components or
-                                                                 //    external SOC (could be useful in small
-                                                                 //    YCR-core-centric SOCs))
-    output  logic                        sys_rdc_qlfy_o,         // System-to-External SOC Reset Domain Crossing Qualifier
+    output  logic                             sys_rst_n_o,            // External System Reset output
+                                                                      //   (for the processor cluster's components or
+                                                                      //    external SOC (could be useful in small
+                                                                      //    YCR-core-centric SOCs))
+    output  logic                             sys_rdc_qlfy_o,         // System-to-External SOC Reset Domain Crossing Qualifier
 `endif // YCR_DBG_EN
 
 `ifdef YCR_DBG_EN
-    input   logic [31:0]                 fuse_idcode,            // TAPC IDCODE
+    input   logic [31:0]                      fuse_idcode,            // TAPC IDCODE
 `endif // YCR_DBG_EN
 
     // IRQ
@@ -213,15 +235,6 @@ module ycr2_top_wb            (
    input  logic  [31:0]                  dcache_mem_dout1          , // Read Data
    `endif
 
-    // Instruction Memory Interface
-    //output  logic                      wbd_imem_stb_o, // strobe/request
-    //output  logic   [YCR_WB_WIDTH-1:0] wbd_imem_adr_o, // address
-    //output  logic                      wbd_imem_we_o,  // write
-    //output  logic   [YCR_WB_WIDTH-1:0] wbd_imem_dat_o, // data output
-    //output  logic   [3:0]              wbd_imem_sel_o, // byte enable
-    //input   logic   [YCR_WB_WIDTH-1:0] wbd_imem_dat_i, // data input
-    //input   logic                      wbd_imem_ack_i, // acknowlegement
-    //input   logic                      wbd_imem_err_i,  // error
 
     // Data Memory Interface
     output  logic                        wbd_dmem_stb_o, // strobe/request
@@ -243,15 +256,22 @@ localparam int unsigned YCR_CLUSTER_TOP_RST_SYNC_STAGES_NUM            = 2;
 // Local signal declaration
 //-------------------------------------------------------------------------------
 // Reset logic
-logic                                               test_mode;              // Test mode - unused
-logic                                               test_rst_n;             // Test mode's reset - unused
 logic                                               pwrup_rst_n_sync;
-logic                                               rst_n_sync;
 logic                                               cpu_rst_n_sync;
 `ifdef YCR_DBG_EN
 logic                                               tapc_trst_n;
 `endif // YCR_DBG_EN
 logic [`YCR_NUMCORES-1:0]                           cpu_core_rst_n_sync;        // CPU Reset (Core Reset)
+
+//----------------------------------------------------------------
+// CORE-0 Specific Signals
+// ---------------------------------------------------------------
+logic [48:0]                                       core0_debug;
+logic [1:0]                                        core0_uid;
+logic                                              core0_timer_irq;
+logic [63:0]                                       core0_timer_val;
+logic [YCR_IRQ_LINES_NUM-1:0]                      core0_irq_lines;  // IRQ lines to IPIC
+logic                                              core0_soft_irq;  // IRQ lines to IPIC
 
 // Instruction memory interface from core to router
 logic                                              core0_imem_req_ack;
@@ -271,6 +291,15 @@ logic [`YCR_DMEM_AWIDTH-1:0]                       core0_dmem_addr;
 logic [`YCR_DMEM_DWIDTH-1:0]                       core0_dmem_wdata;
 logic [`YCR_DMEM_DWIDTH-1:0]                       core0_dmem_rdata;
 logic [1:0]                                        core0_dmem_resp;
+//----------------------------------------------------------------
+// CORE-1 Specific Signals
+// ---------------------------------------------------------------
+logic [48:0]                                       core1_debug;
+logic [1:0]                                        core1_uid;
+logic                                              core1_timer_irq;
+logic [63:0]                                       core1_timer_val;
+logic [YCR_IRQ_LINES_NUM-1:0]                      core1_irq_lines;  // IRQ lines to IPIC
+logic                                              core1_soft_irq;  // IRQ lines to IPIC
 
 // Instruction memory interface from core to router
 logic                                              core1_imem_req_ack;
@@ -291,321 +320,374 @@ logic [`YCR_DMEM_DWIDTH-1:0]                       core1_dmem_wdata;
 logic [`YCR_DMEM_DWIDTH-1:0]                       core1_dmem_rdata;
 logic [1:0]                                        core1_dmem_resp;
 
-// Instruction memory interface from router to WB bridge
-logic                                              wb_imem_req_ack;
-logic                                              wb_imem_req;
-logic                                              wb_imem_cmd;
-logic [`YCR_IMEM_AWIDTH-1:0]                       wb_imem_addr;
-logic [`YCR_IMEM_DWIDTH-1:0]                       wb_imem_rdata;
-logic [1:0]                                        wb_imem_resp;
-
+//----------------------------------------------------
 // Data memory interface from router to WB bridge
-logic                                              wb_dmem_req_ack;
-logic                                              wb_dmem_req;
-logic                                              wb_dmem_cmd;
-logic [1:0]                                        wb_dmem_width;
-logic [`YCR_DMEM_AWIDTH-1:0]                       wb_dmem_addr;
-logic [`YCR_DMEM_DWIDTH-1:0]                       wb_dmem_wdata;
-logic [`YCR_DMEM_DWIDTH-1:0]                       wb_dmem_rdata;
-logic [1:0]                                        wb_dmem_resp;
+// --------------------------------------------------
+logic                                              core_dmem_req_ack;
+logic                                              core_dmem_req;
+logic                                              core_dmem_cmd;
+logic [1:0]                                        core_dmem_width;
+logic [`YCR_DMEM_AWIDTH-1:0]                       core_dmem_addr;
+logic [`YCR_DMEM_DWIDTH-1:0]                       core_dmem_wdata;
+logic [`YCR_DMEM_DWIDTH-1:0]                       core_dmem_rdata;
+logic [1:0]                                        core_dmem_resp;
 
-`ifdef YCR_TCM_EN
-// Instruction memory interface from router to TCM
-logic                                              tcm_imem_req_ack;
-logic                                              tcm_imem_req;
-logic                                              tcm_imem_cmd;
-logic [`YCR_IMEM_AWIDTH-1:0]                       tcm_imem_addr;
-logic [`YCR_IMEM_DWIDTH-1:0]                       tcm_imem_rdata;
-logic [1:0]                                        tcm_imem_resp;
+//----------------------------------------------------
+// icache interface from router to WB bridge
+// --------------------------------------------------
+logic                                              core_icache_req_ack;
+logic                                              core_icache_req;
+logic                                              core_icache_cmd;
+logic [1:0]                                        core_icache_width;
+logic [`YCR_DMEM_AWIDTH-1:0]                       core_icache_addr;
+logic [2:0]                                        core_icache_bl;
+logic [`YCR_DMEM_DWIDTH-1:0]                       core_icache_rdata;
+logic [1:0]                                        core_icache_resp;
 
-// Data memory interface from router to TCM
-logic                                              tcm_dmem_req_ack;
-logic                                              tcm_dmem_req;
-logic                                              tcm_dmem_cmd;
-logic [1:0]                                        tcm_dmem_width;
-logic [`YCR_DMEM_AWIDTH-1:0]                       tcm_dmem_addr;
-logic [`YCR_DMEM_DWIDTH-1:0]                       tcm_dmem_wdata;
-logic [`YCR_DMEM_DWIDTH-1:0]                       tcm_dmem_rdata;
-logic [1:0]                                        tcm_dmem_resp;
-`endif // YCR_TCM_EN
+//----------------------------------------------------
+// dcache interface from router to WB bridge
+// --------------------------------------------------
+logic                                              core_dcache_req_ack;
+logic                                              core_dcache_req;
+logic                                              core_dcache_cmd;
+logic [1:0]                                        core_dcache_width;
+logic [`YCR_DMEM_AWIDTH-1:0]                       core_dcache_addr;
+logic [`YCR_DMEM_DWIDTH-1:0]                       core_dcache_wdata;
+logic [`YCR_DMEM_DWIDTH-1:0]                       core_dcache_rdata;
+logic [1:0]                                        core_dcache_resp;
 
-// Data memory interface from router to memory-mapped timer
-logic                                              timer_dmem_req_ack;
-logic                                              timer_dmem_req;
-logic                                              timer_dmem_cmd;
-logic [1:0]                                        timer_dmem_width;
-logic [`YCR_DMEM_AWIDTH-1:0]                       timer_dmem_addr;
-logic [`YCR_DMEM_DWIDTH-1:0]                       timer_dmem_wdata;
-logic [`YCR_DMEM_DWIDTH-1:0]                       timer_dmem_rdata;
-logic [1:0]                                        timer_dmem_resp;
+logic [3:0]                                        core_clk_out;
 
-logic                                              timer_irq;
-logic [63:0]                                       timer_val;
-logic [48:0]                                       core0_debug;
-logic [48:0]                                       core1_debug;
-logic [1:0]                                        core0_uid;
-logic [1:0]                                        core1_uid;
-logic [1:0]                                        core2_uid;
-logic [1:0]                                        core3_uid;
 
+logic                                              cfg_dcache_force_flush;
 //-------------------------------------------------------------------------------
 // YCR Intf instance
 //-------------------------------------------------------------------------------
-ycr2_mintf u_mintf (
+ycr2_iconnect u_connect (
 
-     .cfg_cska_riscv          (cfg_cska_riscv          ),
-     .wbd_clk_int             (wbd_clk_int             ),
-     .wbd_clk_riscv           (wbd_clk_riscv           ),
+          .core_clk                     (core_clk                     ), // Core clock to match clock latency
+          .rtc_clk                      (rtc_clk                      ), // Core clock
+	  .pwrup_rst_n                  (pwrup_rst_n                  ),
+          .cpu_intf_rst_n               (cpu_intf_rst_n               ), // CPU reset
 
-    // Control
-     .pwrup_rst_n             (pwrup_rst_n             ), // Power-Up Reset
-     .rst_n                   (rst_n                   ), // Regular Reset signal
-     .cpu_core_rst_n          (cpu_core_rst_n          ), // CPU Reset (Core Reset)
-     .cpu_intf_rst_n          (cpu_intf_rst_n          ), // CPU Reset (Core Reset)
-     .core_debug_sel          (core_debug_sel          ),
-     .core_clk                (core_clk                ), // Core clock
-     .rtc_clk                 (rtc_clk                 ), // Real-time clock
-     .riscv_debug             (riscv_debug             ),
+          .core_debug_sel               (core_debug_sel               ),
+	  .riscv_debug                  (riscv_debug                  ),
+          .cfg_sram_lphase              (cfg_sram_lphase[3:2]         ),
 
-`ifdef YCR_DBG_EN
-    // -- JTAG I/F
-     .trst_n                  (trst_n                  ),
-`endif // YCR_DBG_EN
+          // Interrupt buffering      
+          .core_irq_lines_i             (irq_lines                    ),
+          .core_irq_soft_i              (soft_irq                     ),
 
-`ifndef YCR_TCM_MEM
-    // SRAM-0 PORT-0
-     .sram0_clk0              (sram0_clk0              ),
-     .sram0_csb0              (sram0_csb0              ),
-     .sram0_web0              (sram0_web0              ),
-     .sram0_addr0             (sram0_addr0             ),
-     .sram0_wmask0            (sram0_wmask0            ),
-     .sram0_din0              (sram0_din0              ),
-     .sram0_dout0             (sram0_dout0             ),
-    
-    // SRAM-0 PORT-1
-     .sram0_clk1              (sram0_clk1              ),
-     .sram0_csb1              (sram0_csb1              ),
-     .sram0_addr1             (sram0_addr1             ),
-     .sram0_dout1             (sram0_dout1             ),
- 
-`endif
-
-     .wb_rst_n                (wb_rst_n                ), // Wish bone reset
-     .wb_clk                  (wb_clk                  ), // wish bone clock
-
+    // CORE-0
+          .core0_debug                  (core0_debug                  ),
+          .core0_uid                    (core0_uid                    ),
+          .core0_timer_val              (core0_timer_val              ), // Machine timer value
+          .core0_timer_irq              (core0_timer_irq              ), // Machine timer value
+          .core0_irq_lines              (core0_irq_lines              ),
+          .core0_irq_soft               (core0_soft_irq               ),
     // Instruction Memory Interface
-    //.wbd_imem_stb_o          (                        ), // strobe/request
-    //.wbd_imem_adr_o          (                        ), // address
-    //.wbd_imem_we_o           (                        ), // write
-    //.wbd_imem_dat_o          (                        ), // data output
-    //.wbd_imem_sel_o          (                        ), // byte enable
-    //.wbd_imem_dat_i          ('h0                     ), // data input
-    //.wbd_imem_ack_i          (1'b0                    ), // acknowlegement
-    //.wbd_imem_err_i          (1'b0                    ), // error
+          .core0_imem_req_ack           (core0_imem_req_ack           ), // IMEM request acknowledge
+          .core0_imem_req               (core0_imem_req               ), // IMEM request
+          .core0_imem_cmd               (core0_imem_cmd               ), // IMEM command
+          .core0_imem_addr              (core0_imem_addr              ), // IMEM address
+          .core0_imem_bl                (core0_imem_bl                ), // IMEM address
+          .core0_imem_rdata             (core0_imem_rdata             ), // IMEM read data
+          .core0_imem_resp              (core0_imem_resp              ), // IMEM response
 
     // Data Memory Interface
-     .wbd_dmem_stb_o          (wbd_dmem_stb_o          ), // strobe/request
-     .wbd_dmem_adr_o          (wbd_dmem_adr_o          ), // address
-     .wbd_dmem_we_o           (wbd_dmem_we_o           ), // write
-     .wbd_dmem_dat_o          (wbd_dmem_dat_o          ), // data output
-     .wbd_dmem_sel_o          (wbd_dmem_sel_o          ), // byte enable
-     .wbd_dmem_dat_i          (wbd_dmem_dat_i          ), // data input
-     .wbd_dmem_ack_i          (wbd_dmem_ack_i          ), // acknowlegement
-     .wbd_dmem_err_i          (wbd_dmem_err_i          ), // error
+          .core0_dmem_req_ack           (core0_dmem_req_ack           ), // DMEM request acknowledge
+          .core0_dmem_req               (core0_dmem_req               ), // DMEM request
+          .core0_dmem_cmd               (core0_dmem_cmd               ), // DMEM command
+          .core0_dmem_width             (core0_dmem_width             ), // DMEM data width
+          .core0_dmem_addr              (core0_dmem_addr              ), // DMEM address
+          .core0_dmem_wdata             (core0_dmem_wdata             ), // DMEM write data
+          .core0_dmem_rdata             (core0_dmem_rdata             ), // DMEM read data
+          .core0_dmem_resp              (core0_dmem_resp              ), // DMEM response
+
+    // CORE-1
+          .core1_debug                  (core1_debug                  ),
+          .core1_uid                    (core1_uid                    ),
+          .core1_timer_val              (core1_timer_val              ), // Machine timer value
+          .core1_timer_irq              (core1_timer_irq              ), // Machine timer value
+          .core1_irq_lines              (core1_irq_lines              ),
+          .core1_irq_soft               (core1_soft_irq               ),
+    // Instruction Memory Interface
+          .core1_imem_req_ack           (core1_imem_req_ack           ), // IMEM request acknowledge
+          .core1_imem_req               (core1_imem_req               ), // IMEM request
+          .core1_imem_cmd               (core1_imem_cmd               ), // IMEM command
+          .core1_imem_addr              (core1_imem_addr              ), // IMEM address
+          .core1_imem_bl                (core1_imem_bl                ), // IMEM address
+          .core1_imem_rdata             (core1_imem_rdata             ), // IMEM read data
+          .core1_imem_resp              (core1_imem_resp              ), // IMEM response
+
+    // Data Memory Interface
+          .core1_dmem_req_ack           (core1_dmem_req_ack           ), // DMEM request acknowledge
+          .core1_dmem_req               (core1_dmem_req               ), // DMEM request
+          .core1_dmem_cmd               (core1_dmem_cmd               ), // DMEM command
+          .core1_dmem_width             (core1_dmem_width             ), // DMEM data width
+          .core1_dmem_addr              (core1_dmem_addr              ), // DMEM address
+          .core1_dmem_wdata             (core1_dmem_wdata             ), // DMEM write data
+          .core1_dmem_rdata             (core1_dmem_rdata             ), // DMEM read data
+          .core1_dmem_resp              (core1_dmem_resp              ), // DMEM response
+
+
+    //------------------------------------------------------------------
+    // Toward ycr_intf
+    // -----------------------------------------------------------------
+          .cfg_dcache_force_flush       (cfg_dcache_force_flush       ),
+
+    // Interface to dmem router
+          .core_dmem_req_ack            (core_dmem_req_ack            ),
+          .core_dmem_req                (core_dmem_req                ),
+          .core_dmem_cmd                (core_dmem_cmd                ),
+          .core_dmem_width              (core_dmem_width              ),
+          .core_dmem_addr               (core_dmem_addr               ),
+          .core_dmem_wdata              (core_dmem_wdata              ),
+          .core_dmem_rdata              (core_dmem_rdata              ),
+          .core_dmem_resp               (core_dmem_resp               ),
+
+        `ifdef YCR_ICACHE_EN
+            // Interface to TCM
+          .core_icache_req_ack           (core_icache_req_ack           ),
+          .core_icache_req               (core_icache_req               ),
+          .core_icache_cmd               (core_icache_cmd               ),
+          .core_icache_width             (core_icache_width             ),
+          .core_icache_addr              (core_icache_addr              ),
+          .core_icache_bl                (core_icache_bl                ),
+          .core_icache_rdata             (core_icache_rdata             ),
+          .core_icache_resp              (core_icache_resp              ),
+        `endif // YCR_ICACHE_EN
+        
+        `ifdef YCR_DCACHE_EN
+            // Interface to TCM
+          .core_dcache_req_ack           (core_dcache_req_ack           ),
+          .core_dcache_req               (core_dcache_req               ),
+          .core_dcache_cmd               (core_dcache_cmd               ),
+          .core_dcache_width             (core_dcache_width             ),
+          .core_dcache_addr              (core_dcache_addr              ),
+          .core_dcache_wdata             (core_dcache_wdata             ),
+          .core_dcache_rdata             (core_dcache_rdata             ),
+          .core_dcache_resp              (core_dcache_resp              ),
+        `endif // YCR_ICACHE_EN
+`ifndef YCR_TCM_MEM
+    // SRAM-0 PORT-0
+          .sram0_clk0                   (sram0_clk0                   ),
+          .sram0_csb0                   (sram0_csb0                   ),
+          .sram0_web0                   (sram0_web0                   ),
+          .sram0_addr0                  (sram0_addr0                  ),
+          .sram0_wmask0                 (sram0_wmask0                 ),
+          .sram0_din0                   (sram0_din0                   ),
+          .sram0_dout0                  (sram0_dout0                  ),
+    
+    // SRAM-0 PORT-1
+          .sram0_clk1                   (sram0_clk1                   ),
+          .sram0_csb1                   (sram0_csb1                   ),
+          .sram0_addr1                  (sram0_addr1                  ),
+          .sram0_dout1                  (sram0_dout1                  )
+ 
+`endif
+);
+
+//----------------------------------------------------------------------
+//  Interface
+//  -------------------------------------------------------------------
+
+ycr_intf u_intf(
+`ifdef USE_POWER_PINS
+    .vccd1                     (vccd1), // User area 1 1.8V supply
+    .vssd1                     (vssd1), // User area 1 digital ground
+`endif
+
+    .cfg_cska_riscv            (cfg_cska_riscv            ),
+    .wbd_clk_int               (wbd_clk_int               ),
+    .wbd_clk_riscv             (wbd_clk_riscv             ),
+
+    // Control
+    .pwrup_rst_n               (pwrup_rst_n               ), // Power-Up Reset
+    .core_clk                  (core_clk                  ), // Core clock
+    .cpu_intf_rst_n            (cpu_intf_rst_n            ), // CPU interface reset
+
+    .cfg_icache_pfet_dis       (cfg_cache_ctrl[0]         ),
+    .cfg_icache_ntag_pfet_dis  (cfg_cache_ctrl[1]         ),
+    .cfg_dcache_pfet_dis       (cfg_cache_ctrl[2]         ),
+    .cfg_dcache_force_flush    (cfg_dcache_force_flush    ),
+    .cfg_sram_lphase           (cfg_sram_lphase[1:0]      ),
+
+    // Instruction Memory Interface
+    .core_icache_req_ack       (core_icache_req_ack       ), // IMEM request acknowledge
+    .core_icache_req           (core_icache_req           ), // IMEM request
+    .core_icache_cmd           (core_icache_cmd           ), // IMEM command
+    .core_icache_width         (core_icache_width         ),
+    .core_icache_addr          (core_icache_addr          ), // IMEM address
+    .core_icache_bl            (core_icache_bl            ), // IMEM burst size
+    .core_icache_rdata         (core_icache_rdata         ), // IMEM read data
+    .core_icache_resp          (core_icache_resp          ), // IMEM response
+
+    // Data Memory Interface
+    .core_dcache_req_ack       (core_dcache_req_ack       ), // DMEM request acknowledge
+    .core_dcache_req           (core_dcache_req           ), // DMEM request
+    .core_dcache_cmd           (core_dcache_cmd           ), // DMEM command
+    .core_dcache_width         (core_dcache_width         ), // DMEM data width
+    .core_dcache_addr          (core_dcache_addr          ), // DMEM address
+    .core_dcache_wdata         (core_dcache_wdata         ), // DMEM write data
+    .core_dcache_rdata         (core_dcache_rdata         ), // DMEM read data
+    .core_dcache_resp          (core_dcache_resp          ), // DMEM response
+
+    // Data memory interface from router to WB bridge
+    .core_dmem_req_ack         (core_dmem_req_ack         ),
+    .core_dmem_req             (core_dmem_req             ),
+    .core_dmem_cmd             (core_dmem_cmd             ),
+    .core_dmem_width           (core_dmem_width           ),
+    .core_dmem_addr            (core_dmem_addr            ),
+    .core_dmem_wdata           (core_dmem_wdata           ),
+    .core_dmem_rdata           (core_dmem_rdata           ),
+    .core_dmem_resp            (core_dmem_resp            ),
+    //--------------------------------------------
+    // Wishbone  
+    // ------------------------------------------
+
+    .wb_rst_n                  (wb_rst_n                  ), // Wish bone reset
+    .wb_clk                    (wb_clk                    ), // wish bone clock
+
+    // Data Memory Interface
+    .wbd_dmem_stb_o            (wbd_dmem_stb_o            ), // strobe/request
+    .wbd_dmem_adr_o            (wbd_dmem_adr_o            ), // address
+    .wbd_dmem_we_o             (wbd_dmem_we_o             ), // write
+    .wbd_dmem_dat_o            (wbd_dmem_dat_o            ), // data output
+    .wbd_dmem_sel_o            (wbd_dmem_sel_o            ), // byte enable
+    .wbd_dmem_dat_i            (wbd_dmem_dat_i            ), // data input
+    .wbd_dmem_ack_i            (wbd_dmem_ack_i            ), // acknowlegement
+    .wbd_dmem_err_i            (wbd_dmem_err_i            ), // error
 
    `ifdef YCR_ICACHE_EN
    // Wishbone ICACHE I/F
-     .wb_icache_cyc_o         (                        ), // strobe/request
-     .wb_icache_stb_o         (wb_icache_stb_o         ), // strobe/request
-     .wb_icache_adr_o         (wb_icache_adr_o         ), // address
-     .wb_icache_we_o          (wb_icache_we_o          ), // write
-     .wb_icache_sel_o         (wb_icache_sel_o         ), // byte enable
-     .wb_icache_bl_o          (wb_icache_bl_o          ), // Burst Length
-     .wb_icache_bry_o         (wb_icache_bry_o         ), // Burst Ready
-                                                          
-     .wb_icache_dat_i         (wb_icache_dat_i         ), // data input
-     .wb_icache_ack_i         (wb_icache_ack_i         ), // acknowlegement
-     .wb_icache_lack_i        (wb_icache_lack_i        ), // last acknowlegement
-     .wb_icache_err_i         (wb_icache_err_i         ), // error
+   .wb_icache_cyc_o           (wb_icache_cyc_o            ), // strobe/request
+   .wb_icache_stb_o           (wb_icache_stb_o            ), // strobe/request
+   .wb_icache_adr_o           (wb_icache_adr_o            ), // address
+   .wb_icache_we_o            (wb_icache_we_o             ), // write
+   .wb_icache_sel_o           (wb_icache_sel_o            ), // byte enable
+   .wb_icache_bl_o            (wb_icache_bl_o             ), // Burst Length
+   .wb_icache_bry_o           (wb_icache_bry_o            ), // Burst Ready 
+                                                        
+   .wb_icache_dat_i           (wb_icache_dat_i            ), // data input
+   .wb_icache_ack_i           (wb_icache_ack_i            ), // acknowlegement
+   .wb_icache_lack_i          (wb_icache_lack_i           ), // last acknowlegement
+   .wb_icache_err_i           (wb_icache_err_i            ), // error
 
-     .icache_mem_clk0         (icache_mem_clk0         ), // CLK
-     .icache_mem_csb0         (icache_mem_csb0         ), // CS#
-     .icache_mem_web0         (icache_mem_web0         ), // WE#
-     .icache_mem_addr0        (icache_mem_addr0        ), // Address
-     .icache_mem_wmask0       (icache_mem_wmask0       ), // WMASK#
-     .icache_mem_din0         (icache_mem_din0         ), // Write Data
-//   .icache_mem_dout0        (icache_mem_dout0        ), // Read Data
-                                             
-                                             
-     .icache_mem_clk1         (icache_mem_clk1         ), // CLK
-     .icache_mem_csb1         (icache_mem_csb1         ), // CS#
-     .icache_mem_addr1        (icache_mem_addr1        ), // Address
-     .icache_mem_dout1        (icache_mem_dout1        ), // Read Data
-
+   // CACHE SRAM Memory I/F
+   .icache_mem_clk0           (icache_mem_clk0            ), // CLK
+   .icache_mem_csb0           (icache_mem_csb0            ), // CS#
+   .icache_mem_web0           (icache_mem_web0            ), // WE#
+   .icache_mem_addr0          (icache_mem_addr0           ), // Address
+   .icache_mem_wmask0         (icache_mem_wmask0          ), // WMASK#
+   .icache_mem_din0           (icache_mem_din0            ), // Write Data
+// .icache_mem_dout0          (icache_mem_dout0           ), // Read Data
+   
+   // SRAM-0 PORT-1, IMEM I/F
+   .icache_mem_clk1           (icache_mem_clk1            ), // CLK
+   .icache_mem_csb1           (icache_mem_csb1            ), // CS#
+   .icache_mem_addr1          (icache_mem_addr1           ), // Address
+   .icache_mem_dout1          (icache_mem_dout1           ), // Read Data
    `endif
-
 
    `ifdef YCR_DCACHE_EN
-   // Wishbone DCACHE I/F
-     .wb_dcache_cyc_o         (                        ), // strobe/request
-     .wb_dcache_stb_o         (wb_dcache_stb_o         ), // strobe/request
-     .wb_dcache_adr_o         (wb_dcache_adr_o         ), // address
-     .wb_dcache_we_o          (wb_dcache_we_o          ), // write
-     .wb_dcache_dat_o         (wb_dcache_dat_o         ), // data output
-     .wb_dcache_sel_o         (wb_dcache_sel_o         ), // byte enable
-     .wb_dcache_bl_o          (wb_dcache_bl_o          ), // Burst Length
-     .wb_dcache_bry_o         (wb_dcache_bry_o         ), // Burst Ready
-                                                          
-     .wb_dcache_dat_i         (wb_dcache_dat_i         ), // data input
-     .wb_dcache_ack_i         (wb_dcache_ack_i         ), // acknowlegement
-     .wb_dcache_lack_i        (wb_dcache_lack_i        ), // last acknowlegement
-     .wb_dcache_err_i         (wb_dcache_err_i         ), // error
+   // Wishbone ICACHE I/F
+   .wb_dcache_cyc_o           (wb_dcache_cyc_o            ), // strobe/request
+   .wb_dcache_stb_o           (wb_dcache_stb_o            ), // strobe/request
+   .wb_dcache_adr_o           (wb_dcache_adr_o            ), // address
+   .wb_dcache_we_o            (wb_dcache_we_o             ), // write
+   .wb_dcache_dat_o           (wb_dcache_dat_o            ), // data output
+   .wb_dcache_sel_o           (wb_dcache_sel_o            ), // byte enable
+   .wb_dcache_bl_o            (wb_dcache_bl_o             ), // Burst Length
+   .wb_dcache_bry_o           (wb_dcache_bry_o            ), // Burst Ready
 
-     .dcache_mem_clk0         (dcache_mem_clk0         ), // CLK
-     .dcache_mem_csb0         (dcache_mem_csb0         ), // CS#
-     .dcache_mem_web0         (dcache_mem_web0         ), // WE#
-     .dcache_mem_addr0        (dcache_mem_addr0        ), // Address
-     .dcache_mem_wmask0       (dcache_mem_wmask0       ), // WMASK#
-     .dcache_mem_din0         (dcache_mem_din0         ), // Write Data
-     .dcache_mem_dout0        (dcache_mem_dout0        ), // Read Data
-                                             
-                                             
-     .dcache_mem_clk1         (dcache_mem_clk1         ), // CLK
-     .dcache_mem_csb1         (dcache_mem_csb1         ), // CS#
-     .dcache_mem_addr1        (dcache_mem_addr1        ), // Address
-     .dcache_mem_dout1        (dcache_mem_dout1        ), // Read Data
+   .wb_dcache_dat_i           (wb_dcache_dat_i            ), // data input
+   .wb_dcache_ack_i           (wb_dcache_ack_i            ), // acknowlegement
+   .wb_dcache_lack_i          (wb_dcache_lack_i           ), // last acknowlegement
+   .wb_dcache_err_i           (wb_dcache_err_i            ), // error
+
+   // CACHE SRAM Memory I/F
+   .dcache_mem_clk0           (dcache_mem_clk0            ), // CLK
+   .dcache_mem_csb0           (dcache_mem_csb0            ), // CS#
+   .dcache_mem_web0           (dcache_mem_web0            ), // WE#
+   .dcache_mem_addr0          (dcache_mem_addr0           ), // Address
+   .dcache_mem_wmask0         (dcache_mem_wmask0          ), // WMASK#
+   .dcache_mem_din0           (dcache_mem_din0            ), // Write Data
+   .dcache_mem_dout0          (dcache_mem_dout0           ), // Read Data
+   
+   // SRAM-0 PORT-1, IMEM I/F
+   .dcache_mem_clk1           (dcache_mem_clk1            ), // CLK
+   .dcache_mem_csb1           (dcache_mem_csb1            ), // CS#
+   .dcache_mem_addr1          (dcache_mem_addr1           ), // Address
+   .dcache_mem_dout1          (dcache_mem_dout1           )  // Read Data
 
    `endif
-    // Common
-     .pwrup_rst_n_sync        (pwrup_rst_n_sync        ), // Power-Up reset
-     .rst_n_sync              (rst_n_sync              ), // Regular reset
-     .cpu_core_rst_n_sync     (cpu_core_rst_n_sync     ), // CPU reset
-     .test_mode               (test_mode               ), // DFT Test Mode
-     .test_rst_n              (test_rst_n              ), // DFT Test Reset
-     .core0_debug             (core0_debug              ),
-     .core1_debug             (core1_debug              ),
-`ifdef YCR_DBG_EN
-    // Debug Interface
-     .tapc_trst_n             (tapc_trst_n             ), // Test Reset (TRSTn)
-`endif
-    // Memory-mapped external timer
-     .timer_val               (timer_val               ), // Machine timer value
-     .timer_irq               (timer_irq               ), // Machine timer value
-
-    // CORE-0
-    // Instruction Memory Interface
-     .core0_imem_req_ack      (core0_imem_req_ack      ), // IMEM request acknowledge
-     .core0_imem_req          (core0_imem_req          ), // IMEM request
-     .core0_imem_cmd          (core0_imem_cmd          ), // IMEM command
-     .core0_imem_addr         (core0_imem_addr         ), // IMEM address
-     .core0_imem_bl           (core0_imem_bl           ), // IMEM address
-     .core0_imem_rdata        (core0_imem_rdata        ), // IMEM read data
-     .core0_imem_resp         (core0_imem_resp         ), // IMEM response
-
-    // Data Memory Interface
-     .core0_dmem_req_ack      (core0_dmem_req_ack      ), // DMEM request acknowledge
-     .core0_dmem_req          (core0_dmem_req          ), // DMEM request
-     .core0_dmem_cmd          (core0_dmem_cmd          ), // DMEM command
-     .core0_dmem_width        (core0_dmem_width        ), // DMEM data width
-     .core0_dmem_addr         (core0_dmem_addr         ), // DMEM address
-     .core0_dmem_wdata        (core0_dmem_wdata        ), // DMEM write data
-     .core0_dmem_rdata        (core0_dmem_rdata        ), // DMEM read data
-     .core0_dmem_resp         (core0_dmem_resp         ), // DMEM response
-
-    // CORE-1
-    // Instruction Memory Interface
-     .core1_imem_req_ack      (core1_imem_req_ack      ), // IMEM request acknowledge
-     .core1_imem_req          (core1_imem_req          ), // IMEM request
-     .core1_imem_cmd          (core1_imem_cmd          ), // IMEM command
-     .core1_imem_addr         (core1_imem_addr         ), // IMEM address
-     .core1_imem_bl           (core1_imem_bl           ), // IMEM address
-     .core1_imem_rdata        (core1_imem_rdata        ), // IMEM read data
-     .core1_imem_resp         (core1_imem_resp         ), // IMEM response
-
-    // Data Memory Interface
-     .core1_dmem_req_ack      (core1_dmem_req_ack      ), // DMEM request acknowledge
-     .core1_dmem_req          (core1_dmem_req          ), // DMEM request
-     .core1_dmem_cmd          (core1_dmem_cmd          ), // DMEM command
-     .core1_dmem_width        (core1_dmem_width        ), // DMEM data width
-     .core1_dmem_addr         (core1_dmem_addr         ), // DMEM address
-     .core1_dmem_wdata        (core1_dmem_wdata        ), // DMEM write data
-     .core1_dmem_rdata        (core1_dmem_rdata        ), // DMEM read data
-     .core1_dmem_resp         (core1_dmem_resp         ), // DMEM response
-
-     .core0_uid               (core0_uid               ),
-     .core1_uid               (core1_uid               ),
-     .core2_uid               (core2_uid               ),
-     .core3_uid               (core3_uid               )
-
 );
-
 
 //-------------------------------------------------------------------------------
 // YCR core_0 instance
 //-------------------------------------------------------------------------------
 ycr_core_top i_core_top_0 (
     // Common
-     .pwrup_rst_n             (pwrup_rst_n_sync        ),
-     .rst_n                   (rst_n_sync              ),
-     .cpu_rst_n               (cpu_core_rst_n_sync[0]  ),
-     .test_mode               (test_mode               ),
-     .test_rst_n              (test_rst_n              ),
-     .clk                     (core_clk                ),
-     .core_rst_n_o            (                        ),
-     .core_rdc_qlfy_o         (                        ),
-     .core_debug              (core0_debug              ),
+          .pwrup_rst_n                  (pwrup_rst_n                  ),
+          .rst_n                        (rst_n                        ),
+          .cpu_rst_n                    (cpu_core_rst_n[0]            ),
+          .clk                          (core_clk                     ),
+          .clk_o                        (core_clk_out[0]              ),
+          .core_rst_n_o                 (                             ),
+          .core_rdc_qlfy_o              (                             ),
 `ifdef YCR_DBG_EN
-     .sys_rst_n_o             (sys_rst_n_o             ),
-     .sys_rdc_qlfy_o          (sys_rdc_qlfy_o          ),
+          .sys_rst_n_o                  (sys_rst_n_o                  ),
+          .sys_rdc_qlfy_o               (sys_rdc_qlfy_o               ),
 `endif // YCR_DBG_EN
 
-    // Fuses
-     .core_uid                (core0_uid               ),
 `ifdef YCR_DBG_EN
-     .tapc_fuse_idcode_i      (fuse_idcode             ),
+          .tapc_fuse_idcode_i           (fuse_idcode                  ),
 `endif // YCR_DBG_EN
 
     // IRQ
 `ifdef YCR_IPIC_EN
-     .core_irq_lines_i        (irq_lines               ),
+          .core_irq_lines_i             (core0_irq_lines              ),
 `else // YCR_IPIC_EN
-     .core_irq_ext_i          (ext_irq                 ),
+          .core_irq_ext_i               (ext_irq                      ),
 `endif // YCR_IPIC_EN
-     .core_irq_soft_i         (soft_irq                ),
-     .core_irq_mtimer_i       (timer_irq               ),
-
-    // Memory-mapped external timer
-     .core_mtimer_val_i       (timer_val               ),
-
+          .core_irq_soft_i              (core0_soft_irq               ),
 `ifdef YCR_DBG_EN
     // Debug interface
-     .tapc_trst_n             (tapc_trst_n             ),
-     .tapc_tck                (tck                     ),
-     .tapc_tms                (tms                     ),
-     .tapc_tdi                (tdi                     ),
-     .tapc_tdo                (tdo                     ),
-     .tapc_tdo_en             (tdo_en                  ),
+          .tapc_trst_n                  (tapc_trst_n                  ),
+          .tapc_tck                     (tck                          ),
+          .tapc_tms                     (tms                          ),
+          .tapc_tdi                     (tdi                          ),
+          .tapc_tdo                     (tdo                          ),
+          .tapc_tdo_en                  (tdo_en                       ),
 `endif // YCR_DBG_EN
 
+   //---- inter-connect
+          .core_irq_mtimer_i            (core0_timer_irq              ),
+          .core_mtimer_val_i            (core0_timer_val              ),
+          .core_uid                     (core0_uid                    ),
+          .core_debug                   (core0_debug                  ),
     // Instruction memory interface
-     .imem2core_req_ack_i     (core0_imem_req_ack      ),
-     .core2imem_req_o         (core0_imem_req          ),
-     .core2imem_cmd_o         (core0_imem_cmd          ),
-     .core2imem_addr_o        (core0_imem_addr         ),
-     .core2imem_bl_o          (core0_imem_bl           ),
-     .imem2core_rdata_i       (core0_imem_rdata        ),
-     .imem2core_resp_i        (core0_imem_resp         ),
+          .imem2core_req_ack_i          (core0_imem_req_ack           ),
+          .core2imem_req_o              (core0_imem_req               ),
+          .core2imem_cmd_o              (core0_imem_cmd               ),
+          .core2imem_addr_o             (core0_imem_addr              ),
+          .core2imem_bl_o               (core0_imem_bl                ),
+          .imem2core_rdata_i            (core0_imem_rdata             ),
+          .imem2core_resp_i             (core0_imem_resp              ),
 
     // Data memory interface
-     .dmem2core_req_ack_i     (core0_dmem_req_ack      ),
-     .core2dmem_req_o         (core0_dmem_req          ),
-     .core2dmem_cmd_o         (core0_dmem_cmd          ),
-     .core2dmem_width_o       (core0_dmem_width        ),
-     .core2dmem_addr_o        (core0_dmem_addr         ),
-     .core2dmem_wdata_o       (core0_dmem_wdata        ),
-     .dmem2core_rdata_i       (core0_dmem_rdata        ),
-     .dmem2core_resp_i        (core0_dmem_resp         )
+          .dmem2core_req_ack_i          (core0_dmem_req_ack           ),
+          .core2dmem_req_o              (core0_dmem_req               ),
+          .core2dmem_cmd_o              (core0_dmem_cmd               ),
+          .core2dmem_width_o            (core0_dmem_width             ),
+          .core2dmem_addr_o             (core0_dmem_addr              ),
+          .core2dmem_wdata_o            (core0_dmem_wdata             ),
+          .dmem2core_rdata_i            (core0_dmem_rdata             ),
+          .dmem2core_resp_i             (core0_dmem_resp              )
 );
+
+
 
 
 //-------------------------------------------------------------------------------
@@ -613,67 +695,66 @@ ycr_core_top i_core_top_0 (
 //-------------------------------------------------------------------------------
 ycr_core_top i_core_top_1 (
     // Common
-     .pwrup_rst_n             (pwrup_rst_n_sync        ),
-     .rst_n                   (rst_n_sync              ),
-     .cpu_rst_n               (cpu_core_rst_n_sync[1]  ),
-     .test_mode               (test_mode               ),
-     .test_rst_n              (test_rst_n              ),
-     .clk                     (core_clk                ),
-     .core_rst_n_o            (                        ),
-     .core_rdc_qlfy_o         (                        ),
-     .core_debug              (core1_debug              ),
+          .pwrup_rst_n                  (pwrup_rst_n                  ),
+          .rst_n                        (rst_n                        ),
+          .cpu_rst_n                    (cpu_core_rst_n[1]            ),
+          .clk                          (core_clk                     ),
+          .clk_o                        (core_clk_out[1]              ),
+          .core_rst_n_o                 (                             ),
+          .core_rdc_qlfy_o              (                             ),
 `ifdef YCR_DBG_EN
-     .sys_rst_n_o             (sys_rst_n_o             ),
-     .sys_rdc_qlfy_o          (sys_rdc_qlfy_o          ),
+          .sys_rst_n_o                  (sys_rst_n_o                  ),
+          .sys_rdc_qlfy_o               (sys_rdc_qlfy_o               ),
 `endif // YCR_DBG_EN
 
-    // Fuses
-     .core_uid                (core1_uid               ),
 `ifdef YCR_DBG_EN
-     .tapc_fuse_idcode_i      (fuse_idcode             ),
+          .tapc_fuse_idcode_i           (fuse_idcode                  ),
 `endif // YCR_DBG_EN
 
     // IRQ
 `ifdef YCR_IPIC_EN
-     .core_irq_lines_i        (irq_lines               ),
+          .core_irq_lines_i             (core1_irq_lines              ),
 `else // YCR_IPIC_EN
-     .core_irq_ext_i          (ext_irq                 ),
+          .core_irq_ext_i               (ext_irq                      ),
 `endif // YCR_IPIC_EN
-     .core_irq_soft_i         (soft_irq                ),
-     .core_irq_mtimer_i       (timer_irq               ),
+          .core_irq_soft_i              (core1_soft_irq               ),
 
-    // Memory-mapped external timer
-     .core_mtimer_val_i       (timer_val               ),
 
 `ifdef YCR_DBG_EN
     // Debug interface
-     .tapc_trst_n             (tapc_trst_n             ),
-     .tapc_tck                (tck                     ),
-     .tapc_tms                (tms                     ),
-     .tapc_tdi                (tdi                     ),
-     .tapc_tdo                (tdo                     ),
-     .tapc_tdo_en             (tdo_en                  ),
+          .tapc_trst_n                  (tapc_trst_n                  ),
+          .tapc_tck                     (tck                          ),
+          .tapc_tms                     (tms                          ),
+          .tapc_tdi                     (tdi                          ),
+          .tapc_tdo                     (tdo                          ),
+          .tapc_tdo_en                  (tdo_en                       ),
 `endif // YCR_DBG_EN
 
+   //---- inter-connect
+          .core_irq_mtimer_i            (core1_timer_irq              ),
+          .core_mtimer_val_i            (core1_timer_val              ),
+          .core_uid                     (core1_uid                    ),
+          .core_debug                   (core1_debug                  ),
     // Instruction memory interface
-     .imem2core_req_ack_i     (core1_imem_req_ack      ),
-     .core2imem_req_o         (core1_imem_req          ),
-     .core2imem_cmd_o         (core1_imem_cmd          ),
-     .core2imem_addr_o        (core1_imem_addr         ),
-     .core2imem_bl_o          (core1_imem_bl           ),
-     .imem2core_rdata_i       (core1_imem_rdata        ),
-     .imem2core_resp_i        (core1_imem_resp         ),
+          .imem2core_req_ack_i          (core1_imem_req_ack           ),
+          .core2imem_req_o              (core1_imem_req               ),
+          .core2imem_cmd_o              (core1_imem_cmd               ),
+          .core2imem_addr_o             (core1_imem_addr              ),
+          .core2imem_bl_o               (core1_imem_bl                ),
+          .imem2core_rdata_i            (core1_imem_rdata             ),
+          .imem2core_resp_i             (core1_imem_resp              ),
 
     // Data memory interface
-     .dmem2core_req_ack_i     (core1_dmem_req_ack      ),
-     .core2dmem_req_o         (core1_dmem_req          ),
-     .core2dmem_cmd_o         (core1_dmem_cmd          ),
-     .core2dmem_width_o       (core1_dmem_width        ),
-     .core2dmem_addr_o        (core1_dmem_addr         ),
-     .core2dmem_wdata_o       (core1_dmem_wdata        ),
-     .dmem2core_rdata_i       (core1_dmem_rdata        ),
-     .dmem2core_resp_i        (core1_dmem_resp         )
+          .dmem2core_req_ack_i          (core1_dmem_req_ack           ),
+          .core2dmem_req_o              (core1_dmem_req               ),
+          .core2dmem_cmd_o              (core1_dmem_cmd               ),
+          .core2dmem_width_o            (core1_dmem_width             ),
+          .core2dmem_addr_o             (core1_dmem_addr              ),
+          .core2dmem_wdata_o            (core1_dmem_wdata             ),
+          .dmem2core_rdata_i            (core1_dmem_rdata             ),
+          .dmem2core_resp_i             (core1_dmem_resp              )
 );
+
 
 endmodule : ycr2_top_wb
 
