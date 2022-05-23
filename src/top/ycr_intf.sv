@@ -73,33 +73,33 @@ module ycr_intf (
 
     // Instruction Memory Interface
     output   logic                          core_icache_req_ack       , // IMEM request acknowledge
+    output   logic [`YCR_IMEM_DWIDTH-1:0]   core_icache_rdata         , // IMEM read data
+    output   logic [1:0]                    core_icache_resp          , // IMEM response
     input    logic                          core_icache_req           , // IMEM request
     input    logic                          core_icache_cmd           , // IMEM command
     input    logic [`YCR_IMEM_AWIDTH-1:0]   core_icache_addr          , // IMEM address
     input    logic [`YCR_IMEM_BSIZE-1:0]    core_icache_bl            , // IMEM burst size
     input    logic [1:0]                    core_icache_width         , // IMEM Width
-    output   logic [`YCR_IMEM_DWIDTH-1:0]   core_icache_rdata         , // IMEM read data
-    output   logic [1:0]                    core_icache_resp          , // IMEM response
 
     // Data Memory Interface
     output   logic                          core_dcache_req_ack       , // DMEM request acknowledge
+    output   logic [`YCR_DMEM_DWIDTH-1:0]   core_dcache_rdata         , // DMEM read data
+    output   logic [1:0]                    core_dcache_resp          , // DMEM response
     input    logic                          core_dcache_req           , // DMEM request
     input    logic                          core_dcache_cmd           , // DMEM command
     input    logic[1:0]                     core_dcache_width         , // DMEM data width
     input    logic [`YCR_DMEM_AWIDTH-1:0]   core_dcache_addr          , // DMEM address
     input    logic [`YCR_DMEM_DWIDTH-1:0]   core_dcache_wdata         , // DMEM write data
-    output   logic [`YCR_DMEM_DWIDTH-1:0]   core_dcache_rdata         , // DMEM read data
-    output   logic [1:0]                    core_dcache_resp          , // DMEM response
 
     // Data memory interface from router to WB bridge
     output   logic                          core_dmem_req_ack         ,
+    output   logic [`YCR_DMEM_DWIDTH-1:0]   core_dmem_rdata           ,
+    output   logic [1:0]                    core_dmem_resp            ,
     input    logic                          core_dmem_req             ,
     input    logic                          core_dmem_cmd             ,
     input    logic [1:0]                    core_dmem_width           ,
     input    logic [`YCR_DMEM_AWIDTH-1:0]   core_dmem_addr            ,
     input    logic [`YCR_DMEM_DWIDTH-1:0]   core_dmem_wdata           ,
-    output   logic [`YCR_DMEM_DWIDTH-1:0]   core_dmem_rdata           ,
-    output   logic [1:0]                    core_dmem_resp            ,
     //--------------------------------------------
     // Wishbone  
     // ------------------------------------------
@@ -164,7 +164,7 @@ module ycr_intf (
    input logic                              wb_dcache_lack_i          , // last acknowlegement
    input logic                              wb_dcache_err_i           , // error
 
-   // CACHE SRAM Memory I/F
+   // DCACHE PORT-0 SRAM Memory I/F
    output logic                             dcache_mem_clk0           , // CLK
    output logic                             dcache_mem_csb0           , // CS#
    output logic                             dcache_mem_web0           , // WE#
@@ -173,7 +173,7 @@ module ycr_intf (
    output logic   [31:0]                    dcache_mem_din0           , // Write Data
    input  logic   [31:0]                    dcache_mem_dout0          , // Read Data
    
-   // SRAM-0 PORT-1, IMEM I/F
+   // DCACHE SRAM-0 PORT-1, IMEM I/F
    output logic                             dcache_mem_clk1           , // CLK
    output logic                             dcache_mem_csb1           , // CS#
    output logic  [8:0]                      dcache_mem_addr1          , // Address

@@ -414,7 +414,9 @@ wire [$clog2(CACHESIZE)-1:0]  next_prefetch_ptr = prefetch_ptr[4:0] + 1;
 
 // Cache Controller State Machine and Logic
 
-wire [31:0] mem2wb_data  = ycr1_conv_mem2wb_wdata(cpu_width_l,cpu_addr_l[1:0], cpu_mem_wdata);
+logic [31:0] mem2wb_data_l;
+
+wire [31:0] mem2wb_data  = ycr1_conv_mem2wb_wdata(cpu_mem_width,cpu_mem_addr[1:0], cpu_mem_wdata);
 wire [31:0] wb2mem_data  = ycr1_conv_wb2mem_rdata(cpu_width_l,cpu_addr_l[1:0], wb_app_dat_i);
 
 always@(posedge mclk or negedge rst_n)
@@ -454,6 +456,7 @@ begin
       cpu_wr_l          <= '0;
       cpu_be_l          <= '0;
       cpu_width_l       <= '0;
+      mem2wb_data_l     <= '0;
 
       prefetch_data     <= '0;
       prefetch_ptr      <= '0;
@@ -509,6 +512,7 @@ begin
 	        cpu_addr_l       <= cpu_mem_addr;
 	        cpu_wr_l         <= cpu_mem_cmd;
 	        cpu_width_l      <= cpu_mem_width;
+		mem2wb_data_l    <= mem2wb_data;
 	        cpu_be_l         <= ycr1_conv_mem2wb_be(cpu_mem_width,cpu_mem_addr[1:0]);
 		prefetch_val     <= 1'b0;
 	        cpu_mem_req_ack  <= 1'b1;
@@ -568,7 +572,7 @@ begin
                  cache_mem_csb0    <= 1'b0;
                  cache_mem_web0    <= 1'b0;
                  cache_mem_wmask0  <= cpu_be_l;
-                 cache_mem_din0    <= mem2wb_data;
+                 cache_mem_din0    <= mem2wb_data_l;
 	         state             <= IDLE;
 	     end else begin // cpu read access
 	          cache_mem_addr1  <= {tag_hindex,cpu_addr_l[6:2]};
@@ -659,22 +663,22 @@ begin
 		   // then update the cache data based on the
 		   // byte select value
 		   if(cpu_be_l[0])
-		      cache_mem_din0[7:0]  <= mem2wb_data[7:0];
+		      cache_mem_din0[7:0]  <= mem2wb_data_l[7:0];
 		   else
 		      cache_mem_din0[7:0]  <= wb_app_dat_i[7:0];
 
 		   if(cpu_be_l[1])
-		      cache_mem_din0[15:8]  <= mem2wb_data[15:8];
+		      cache_mem_din0[15:8]  <= mem2wb_data_l[15:8];
 		   else
 		      cache_mem_din0[15:8]  <= wb_app_dat_i[15:8];
 
 		   if(cpu_be_l[2])
-		      cache_mem_din0[23:16]  <= mem2wb_data[23:16];
+		      cache_mem_din0[23:16]  <= mem2wb_data_l[23:16];
 		   else
 		      cache_mem_din0[23:16]  <= wb_app_dat_i[23:16];
 
 		   if(cpu_be_l[3])
-		      cache_mem_din0[31:24]  <= mem2wb_data[31:24];
+		      cache_mem_din0[31:24]  <= mem2wb_data_l[31:24];
 		   else
 		      cache_mem_din0[31:24]  <= wb_app_dat_i[31:24];
 	         end

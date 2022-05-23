@@ -85,6 +85,10 @@
 ////     2.0:  April 1, 2022, Dinesh A                                    ////
 ////           As sky130 SRAM timining library are not accurate, added    ////
 ////           Write interface lanuch phase selection                     ////  
+////     2.1:  May 23, 2022, Dinesh A                                     ////
+////           To improve the timing, request re-timing are added at      ////
+////           iconnect block, In MPW-6 shows Riscv core meeting timing   ////
+////           for 100Mhz                                                 ////
 ////                                                                      ////
 //////////////////////////////////////////////////////////////////////////////
 
@@ -188,7 +192,7 @@ module ycr2_top_wb                      (
    input logic                           wb_icache_lack_i,// last acknowlegement
    input logic                           wb_icache_err_i,  // error
 
-   // CACHE SRAM Memory I/F
+   // ICACHE PORT-0 SRAM Memory I/F
    output logic                          icache_mem_clk0, // CLK
    output logic                          icache_mem_csb0, // CS#
    output logic                          icache_mem_web0, // WE#
@@ -197,7 +201,7 @@ module ycr2_top_wb                      (
    output logic   [31:0]                 icache_mem_din0, // Write Data
    //input  logic   [31:0]               icache_mem_dout0, // Read Data
    
-   // SRAM-0 PORT-1, IMEM I/F
+   // ICACHE PORT-1 SRAM Memory I/F
    output logic                          icache_mem_clk1, // CLK
    output logic                          icache_mem_csb1, // CS#
    output logic  [8:0]                   icache_mem_addr1, // Address
@@ -205,7 +209,7 @@ module ycr2_top_wb                      (
    `endif
 
    `ifdef YCR_DCACHE_EN
-   // Wishbone ICACHE I/F
+   // Wishbone DCACHE I/F
    output logic                          wb_dcache_stb_o, // strobe/request
    output logic   [YCR_WB_WIDTH-1:0]     wb_dcache_adr_o, // address
    output logic                          wb_dcache_we_o,  // write
@@ -219,7 +223,7 @@ module ycr2_top_wb                      (
    input logic                           wb_dcache_lack_i,// last acknowlegement
    input logic                           wb_dcache_err_i,  // error
 
-   // CACHE SRAM Memory I/F
+   // DCACHE PORT-0 SRAM I/F
    output logic                          dcache_mem_clk0           , // CLK
    output logic                          dcache_mem_csb0           , // CS#
    output logic                          dcache_mem_web0           , // WE#
@@ -228,7 +232,7 @@ module ycr2_top_wb                      (
    output logic   [31:0]                 dcache_mem_din0           , // Write Data
    input  logic   [31:0]                 dcache_mem_dout0          , // Read Data
    
-   // SRAM-0 PORT-1, IMEM I/F
+   // DCACHE PORT-1 SRAM I/F
    output logic                          dcache_mem_clk1           , // CLK
    output logic                          dcache_mem_csb1           , // CS#
    output logic  [8:0]                   dcache_mem_addr1          , // Address
@@ -236,7 +240,7 @@ module ycr2_top_wb                      (
    `endif
 
 
-    // Data Memory Interface
+    // WB Data Memory Interface
     output  logic                        wbd_dmem_stb_o, // strobe/request
     output  logic   [YCR_WB_WIDTH-1:0]   wbd_dmem_adr_o, // address
     output  logic                        wbd_dmem_we_o,  // write

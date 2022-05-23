@@ -87,14 +87,26 @@ always @(negedge rst_n or negedge mem_clk0_i) begin
    end
 end
 
-assign mem_csb1_o   = (cfg_mem_lphase == 0) ?  mem_csb1_i  : mem_csb1_neg;
-assign mem_addr1_o  = (cfg_mem_lphase == 0) ?  mem_addr1_i : mem_addr1_neg;
+//assign mem_csb1_o   = (cfg_mem_lphase == 0) ?  mem_csb1_i  : mem_csb1_neg;
+ctech_mux2x1_4 #(.WB(1)) u_mem_csb1 (.A0 (mem_csb1_i), .A1(mem_csb1_neg), .S(cfg_mem_lphase),.X(mem_csb1_o));
 
-assign mem_csb0_o   = (cfg_mem_lphase == 0) ?  mem_csb0_i   : mem_csb0_neg;
-assign mem_web0_o   = (cfg_mem_lphase == 0) ?  mem_web0_i   : mem_web0_neg;
-assign mem_wmask0_o  = (cfg_mem_lphase == 0)?  mem_wmask0_i : mem_wmask0_neg;
-assign mem_addr0_o  = (cfg_mem_lphase == 0) ?  mem_addr0_i  : mem_addr0_neg;
-assign mem_din0_o   = (cfg_mem_lphase == 0) ?  mem_din0_i   : mem_din0_neg;
+//assign mem_addr1_o  = (cfg_mem_lphase == 0) ?  mem_addr1_i : mem_addr1_neg;
+ctech_mux2x1_4 #(.WB(9)) u_mem_addr1 (.A0 (mem_addr1_i), .A1(mem_addr1_neg), .S(cfg_mem_lphase),.X(mem_addr1_o));
+
+//assign mem_csb0_o    = (cfg_mem_lphase == 0) ?  mem_csb0_i   : mem_csb0_neg;
+ctech_mux2x1_4 #(.WB(1)) u_mem_csb0 (.A0 (mem_csb0_i), .A1(mem_csb0_neg), .S(cfg_mem_lphase),.X(mem_csb0_o));
+
+//assign mem_web0_o    = (cfg_mem_lphase == 0) ?  mem_web0_i   : mem_web0_neg;
+ctech_mux2x1_4 #(.WB(1)) u_mem_web0 (.A0 (mem_web0_i), .A1(mem_web0_neg), .S(cfg_mem_lphase),.X(mem_web0_o));
+
+//assign mem_wmask0_o  = (cfg_mem_lphase == 0)?  mem_wmask0_i : mem_wmask0_neg;
+ctech_mux2x1_4 #(.WB(4)) u_mem_wmask0 (.A0 (mem_wmask0_i), .A1(mem_wmask0_neg), .S(cfg_mem_lphase),.X(mem_wmask0_o));
+
+//assign mem_addr0_o   = (cfg_mem_lphase == 0) ?  mem_addr0_i  : mem_addr0_neg;
+ctech_mux2x1_4 #(.WB(9)) u_mem_addr0 (.A0 (mem_addr0_i), .A1(mem_addr0_neg), .S(cfg_mem_lphase),.X(mem_addr0_o));
+
+//assign mem_din0_o    = (cfg_mem_lphase == 0) ?  mem_din0_i   : mem_din0_neg;
+ctech_mux2x1_4 #(.WB(32)) u_mem_din0 (.A0 (mem_din0_i), .A1(mem_din0_neg), .S(cfg_mem_lphase),.X(mem_din0_o));
 
 
 endmodule

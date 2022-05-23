@@ -269,6 +269,39 @@ logic   [31:0]                    sram1_din0_int       ; // Write Data
 logic                             sram1_csb1_int       ; // CS#
 logic  [8:0]                      sram1_addr1_int      ; // Address
 
+// Wire decleration for retiming
+// Instruction Memory Interface
+logic                          core0_imem_req_ack_int        ; // IMEM request acknowledge
+logic                          core0_imem_req_int            ; // IMEM request
+logic                          core0_imem_cmd_int            ; // IMEM command
+logic [`YCR_IMEM_AWIDTH-1:0]   core0_imem_addr_int           ; // IMEM address
+logic [`YCR_IMEM_BSIZE-1:0]    core0_imem_bl_int             ; // IMEM burst size
+
+
+// Data Memory Interface
+logic                          core0_dmem_req_ack_int        ; // DMEM request acknowledge
+logic                          core0_dmem_req_int            ; // DMEM request
+logic                          core0_dmem_cmd_int            ; // DMEM command
+logic[1:0]                     core0_dmem_width_int          ; // DMEM data width
+logic [`YCR_DMEM_AWIDTH-1:0]   core0_dmem_addr_int           ; // DMEM address
+logic [`YCR_DMEM_DWIDTH-1:0]   core0_dmem_wdata_int          ; // DMEM write data
+
+// Instruction Memory Interface
+logic                          core1_imem_req_ack_int        ; // IMEM request acknowledge
+logic                          core1_imem_req_int            ; // IMEM request
+logic                          core1_imem_cmd_int            ; // IMEM command
+logic [`YCR_IMEM_AWIDTH-1:0]   core1_imem_addr_int           ; // IMEM address
+logic [`YCR_IMEM_BSIZE-1:0]    core1_imem_bl_int             ; // IMEM burst size
+
+
+// Data Memory Interface
+logic                          core1_dmem_req_ack_int        ; // DMEM request acknowledge
+logic                          core1_dmem_req_int            ; // DMEM request
+logic                          core1_dmem_cmd_int            ; // DMEM command
+logic[1:0]                     core1_dmem_width_int          ; // DMEM data width
+logic [`YCR_DMEM_AWIDTH-1:0]   core1_dmem_addr_int           ; // DMEM address
+logic [`YCR_DMEM_DWIDTH-1:0]   core1_dmem_wdata_int          ; // DMEM write data
+
 //---------------------------------------------------------------------------------
 // To improve the physical routing irq signal are buffer inside the block
 // --------------------------------------------------------------------------------
@@ -332,52 +365,151 @@ assign core1_uid = 2'b01;
 assign riscv_debug = (core_debug_sel == 2'b00) ? riscv_debug0 : riscv_debug1 ;
 
 
+
+
+// Breaking Timing Path for core0_imem
+ycr_req_retiming #(.FIFO_WIDTH(`YCR_IMEM_AWIDTH+`YCR_IMEM_BSIZE+1))
+                 u_core0_imem_retim 
+		 (
+
+                   .clk                 (core_clk               ),  // Core clock
+                   .rst_n               (cpu_intf_rst_n_sync    ) ,
+                   
+                   .req_ack             (core0_imem_req_ack     ), 
+                   .req                 (core0_imem_req         ), 
+                   .wdata               ({core0_imem_cmd,
+		                          core0_imem_addr,
+					  core0_imem_bl
+		                         }), 
+
+                   .req_ack_int         (core0_imem_req_ack_int), 
+                   .req_int             (core0_imem_req_int    ), 
+                   .rdata               ({core0_imem_cmd_int,
+		                          core0_imem_addr_int,
+					  core0_imem_bl_int
+		                         })  
+		 );
+
+// Breaking Timing Path for core1_imem
+ycr_req_retiming #(.FIFO_WIDTH(`YCR_IMEM_AWIDTH+`YCR_IMEM_BSIZE+1))
+                 u_core1_imem_retim 
+		 (
+
+                   .clk                 (core_clk               ),  // Core clock
+                   .rst_n               (cpu_intf_rst_n_sync    ) ,
+                   
+                   .req_ack             (core1_imem_req_ack     ), 
+                   .req                 (core1_imem_req         ), 
+                   .wdata               ({core1_imem_cmd,
+		                          core1_imem_addr,
+					  core1_imem_bl
+		                         }), 
+
+                   .req_ack_int         (core1_imem_req_ack_int), 
+                   .req_int             (core1_imem_req_int    ), 
+                   .rdata               ({core1_imem_cmd_int,
+		                          core1_imem_addr_int,
+					  core1_imem_bl_int
+		                         })  
+		 );
+
+// Breaking Timing Path for core0_dmem
+ycr_req_retiming #(.FIFO_WIDTH(`YCR_IMEM_AWIDTH+`YCR_DMEM_DWIDTH+2+1))
+                 u_core0_dmem_retim 
+		 (
+
+                   .clk                 (core_clk               ),  // Core clock
+                   .rst_n               (cpu_intf_rst_n_sync    ) ,
+                   
+                   .req_ack             (core0_dmem_req_ack     ), 
+                   .req                 (core0_dmem_req         ), 
+                   .wdata               ({core0_dmem_cmd,
+		                          core0_dmem_width,
+		                          core0_dmem_addr,
+					  core0_dmem_wdata
+		                         }), 
+
+                   .req_ack_int         (core0_dmem_req_ack_int), 
+                   .req_int             (core0_dmem_req_int    ), 
+                   .rdata               ({core0_dmem_cmd_int,
+		                          core0_dmem_width_int,
+		                          core0_dmem_addr_int,
+					  core0_dmem_wdata_int
+		                         })  
+		 );
+
+// Breaking Timing Path for core1_dmem
+ycr_req_retiming #(.FIFO_WIDTH(`YCR_IMEM_AWIDTH+`YCR_DMEM_DWIDTH+2+1))
+                 u_core1_dmem_retim 
+		 (
+
+                   .clk                 (core_clk               ),  // Core clock
+                   .rst_n               (cpu_intf_rst_n_sync    ) ,
+                   
+                   .req_ack             (core1_dmem_req_ack     ), 
+                   .req                 (core1_dmem_req         ), 
+                   .wdata               ({core1_dmem_cmd,
+		                          core1_dmem_width,
+		                          core1_dmem_addr,
+					  core1_dmem_wdata
+		                         }), 
+
+                   .req_ack_int         (core1_dmem_req_ack_int), 
+                   .req_int             (core1_dmem_req_int    ), 
+                   .rdata               ({core1_dmem_cmd_int,
+		                          core1_dmem_width_int,
+		                          core1_dmem_addr_int,
+					  core1_dmem_wdata_int
+		                         })  
+		 );
+
+
 ycr2_cross_bar u_crossbar (
     
     .rst_n                 (cpu_intf_rst_n_sync        ),
     .clk                   (core_clk                   ),
 
     
-    .core0_imem_req_ack    (core0_imem_req_ack         ),
-    .core0_imem_req        (core0_imem_req             ),
-    .core0_imem_cmd        (core0_imem_cmd             ),
+    .core0_imem_req_ack    (core0_imem_req_ack_int     ),
+    .core0_imem_req        (core0_imem_req_int         ),
+    .core0_imem_cmd        (core0_imem_cmd_int         ),
     .core0_imem_width      (YCR_MEM_WIDTH_WORD         ),
-    .core0_imem_addr       (core0_imem_addr            ),
-    .core0_imem_bl         (core0_imem_bl              ),             
+    .core0_imem_addr       (core0_imem_addr_int        ),
+    .core0_imem_bl         (core0_imem_bl_int          ),             
     .core0_imem_wdata      ('h0                        ),
     .core0_imem_rdata      (core0_imem_rdata           ),
     .core0_imem_resp       (core0_imem_resp            ),
                                                  
                                                  
-    .core0_dmem_req_ack    (core0_dmem_req_ack         ),
-    .core0_dmem_req        (core0_dmem_req             ),
-    .core0_dmem_cmd        (core0_dmem_cmd             ),
-    .core0_dmem_width      (core0_dmem_width           ),
-    .core0_dmem_addr       (core0_dmem_addr            ),
+    .core0_dmem_req_ack    (core0_dmem_req_ack_int     ),
+    .core0_dmem_req        (core0_dmem_req_int         ),
+    .core0_dmem_cmd        (core0_dmem_cmd_int         ),
+    .core0_dmem_width      (core0_dmem_width_int       ),
+    .core0_dmem_addr       (core0_dmem_addr_int        ),
     .core0_dmem_bl         (3'h1                       ),             
-    .core0_dmem_wdata      (core0_dmem_wdata           ),
+    .core0_dmem_wdata      (core0_dmem_wdata_int       ),
     .core0_dmem_rdata      (core0_dmem_rdata           ),
     .core0_dmem_resp       (core0_dmem_resp            ),
                                                  
                                                  
-    .core1_imem_req_ack    (core1_imem_req_ack         ),
-    .core1_imem_req        (core1_imem_req             ),
-    .core1_imem_cmd        (core1_imem_cmd             ),
+    .core1_imem_req_ack    (core1_imem_req_ack_int     ),
+    .core1_imem_req        (core1_imem_req_int         ),
+    .core1_imem_cmd        (core1_imem_cmd_int         ),
     .core1_imem_width      (YCR_MEM_WIDTH_WORD         ),
-    .core1_imem_addr       (core1_imem_addr            ),
-    .core1_imem_bl         (core1_imem_bl              ),             
+    .core1_imem_addr       (core1_imem_addr_int        ),
+    .core1_imem_bl         (core1_imem_bl_int          ),             
     .core1_imem_wdata      ('h0                        ),
     .core1_imem_rdata      (core1_imem_rdata           ),
     .core1_imem_resp       (core1_imem_resp            ),
                                                  
                                                  
-    .core1_dmem_req_ack    (core1_dmem_req_ack         ),
-    .core1_dmem_req        (core1_dmem_req             ),
-    .core1_dmem_cmd        (core1_dmem_cmd             ),
-    .core1_dmem_width      (core1_dmem_width           ),
-    .core1_dmem_addr       (core1_dmem_addr            ),
+    .core1_dmem_req_ack    (core1_dmem_req_ack_int     ),
+    .core1_dmem_req        (core1_dmem_req_int         ),
+    .core1_dmem_cmd        (core1_dmem_cmd_int         ),
+    .core1_dmem_width      (core1_dmem_width_int       ),
+    .core1_dmem_addr       (core1_dmem_addr_int        ),
     .core1_dmem_bl         (3'h1                       ),             
-    .core1_dmem_wdata      (core1_dmem_wdata           ),
+    .core1_dmem_wdata      (core1_dmem_wdata_int       ),
     .core1_dmem_rdata      (core1_dmem_rdata           ),
     .core1_dmem_resp       (core1_dmem_resp            ),
                                                  
@@ -471,6 +603,9 @@ ycr2_cross_bar u_crossbar (
     .port4_resp            (timer_dmem_resp            )
 
 );
+
+
+
 
 
 `ifdef YCR_TCM_EN

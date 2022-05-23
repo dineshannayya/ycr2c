@@ -402,21 +402,27 @@ assign core0_dmem_lack =
 	                      (core0_dmem_tid == 3'b100) ? core0_dmem_lack_p4 :
 			      'h0;
 
-assign core0_dmem_rdata  = 
-	                      (core0_dmem_tid == 3'b000) ? core0_dmem_rdata_p0 :
-	                      (core0_dmem_tid == 3'b001) ? core0_dmem_rdata_p1 :
-	                      (core0_dmem_tid == 3'b010) ? core0_dmem_rdata_p2 :
-	                      (core0_dmem_tid == 3'b011) ? core0_dmem_rdata_p3 :
-	                      (core0_dmem_tid == 3'b100) ? core0_dmem_rdata_p4 :
+// Added register to break the timing path
+always_ff @(negedge rst_n, posedge clk) begin
+    if (~rst_n) begin
+      core0_dmem_rdata <= 'h0;
+      core0_dmem_resp  <= 'h0;
+    end else begin 
+       core0_dmem_rdata  <= (core0_dmem_tid == 3'b000) ? core0_dmem_rdata_p0 :
+	                    (core0_dmem_tid == 3'b001) ? core0_dmem_rdata_p1 :
+	                    (core0_dmem_tid == 3'b010) ? core0_dmem_rdata_p2 :
+	                    (core0_dmem_tid == 3'b011) ? core0_dmem_rdata_p3 :
+	                    (core0_dmem_tid == 3'b100) ? core0_dmem_rdata_p4 :
 			      'h0;
 
-assign core0_dmem_resp  = 
-	                      (core0_dmem_tid == 3'b000) ? core0_dmem_resp_p0 :
-	                      (core0_dmem_tid == 3'b001) ? core0_dmem_resp_p1 :
-	                      (core0_dmem_tid == 3'b010) ? core0_dmem_resp_p2 :
-	                      (core0_dmem_tid == 3'b011) ? core0_dmem_resp_p3 :
-	                      (core0_dmem_tid == 3'b100) ? core0_dmem_resp_p4 :
+       core0_dmem_resp  <=  (core0_dmem_tid == 3'b000) ? core0_dmem_resp_p0 :
+	                    (core0_dmem_tid == 3'b001) ? core0_dmem_resp_p1 :
+	                    (core0_dmem_tid == 3'b010) ? core0_dmem_resp_p2 :
+	                    (core0_dmem_tid == 3'b011) ? core0_dmem_resp_p3 :
+	                    (core0_dmem_tid == 3'b100) ? core0_dmem_resp_p4 :
 			      'h0;
+   end
+end
 
 // CORE1 IMEM
 assign core1_imem_req_ack = 
@@ -466,21 +472,27 @@ assign core1_dmem_lack =
 	                      (core1_dmem_tid == 3'b100) ? core1_dmem_lack_p4 :
 			      'h0;
 
-assign core1_dmem_rdata  = 
-	                      (core1_dmem_tid == 3'b000) ? core1_dmem_rdata_p0 :
-	                      (core1_dmem_tid == 3'b001) ? core1_dmem_rdata_p1 :
-	                      (core1_dmem_tid == 3'b010) ? core1_dmem_rdata_p2 :
-	                      (core1_dmem_tid == 3'b011) ? core1_dmem_rdata_p3 :
-	                      (core1_dmem_tid == 3'b100) ? core1_dmem_rdata_p4 :
+// Added register to break the timing path
+always_ff @(negedge rst_n, posedge clk) begin
+    if (~rst_n) begin
+      core1_dmem_rdata <= 'h0;
+      core1_dmem_resp  <= 'h0;
+    end else begin 
+       core1_dmem_rdata  <= (core1_dmem_tid == 3'b000) ? core1_dmem_rdata_p0 :
+	                    (core1_dmem_tid == 3'b001) ? core1_dmem_rdata_p1 :
+	                    (core1_dmem_tid == 3'b010) ? core1_dmem_rdata_p2 :
+	                    (core1_dmem_tid == 3'b011) ? core1_dmem_rdata_p3 :
+	                    (core1_dmem_tid == 3'b100) ? core1_dmem_rdata_p4 :
 			      'h0;
 
-assign core1_dmem_resp  = 
-	                      (core1_dmem_tid == 3'b000) ? core1_dmem_resp_p0 :
-	                      (core1_dmem_tid == 3'b001) ? core1_dmem_resp_p1 :
-	                      (core1_dmem_tid == 3'b010) ? core1_dmem_resp_p2 :
-	                      (core1_dmem_tid == 3'b011) ? core1_dmem_resp_p3 :
-	                      (core1_dmem_tid == 3'b100) ? core1_dmem_resp_p4 :
+       core1_dmem_resp   <= (core1_dmem_tid == 3'b000) ? core1_dmem_resp_p0 :
+	                    (core1_dmem_tid == 3'b001) ? core1_dmem_resp_p1 :
+	                    (core1_dmem_tid == 3'b010) ? core1_dmem_resp_p2 :
+	                    (core1_dmem_tid == 3'b011) ? core1_dmem_resp_p3 :
+	                    (core1_dmem_tid == 3'b100) ? core1_dmem_resp_p4 :
 			      'h0;
+    end
+end
 
 //-------------------------------------------------------------------------
 // Burst is only support in icache and rest of the interface support only
