@@ -368,6 +368,10 @@ logic                                              cfg_dcache_force_flush;
 // YCR Intf instance
 //-------------------------------------------------------------------------------
 ycr2_iconnect u_connect (
+`ifdef USE_POWER_PINS
+          .VPWR                         (vccd1                        ), // User area 1 1.8V supply
+          .VGND                         (vssd1                        ), // User area 1 digital ground
+`endif
 
           .core_clk                     (core_clk                     ), // Core clock to match clock latency
           .rtc_clk                      (rtc_clk                      ), // Core clock
@@ -632,6 +636,10 @@ ycr_intf u_intf(
 // YCR core_0 instance
 //-------------------------------------------------------------------------------
 ycr_core_top i_core_top_0 (
+`ifdef USE_POWER_PINS
+          .vccd1                        (vccd1), // User area 1 1.8V supply
+          .vssd1                        (vssd1), // User area 1 digital ground
+`endif
     // Common
           .pwrup_rst_n                  (pwrup_rst_n                  ),
           .rst_n                        (rst_n                        ),
@@ -698,6 +706,10 @@ ycr_core_top i_core_top_0 (
 // YCR core_1 instance
 //-------------------------------------------------------------------------------
 ycr_core_top i_core_top_1 (
+`ifdef USE_POWER_PINS
+          .vccd1                        (vccd1), // User area 1 1.8V supply
+          .vssd1                        (vssd1), // User area 1 digital ground
+`endif
     // Common
           .pwrup_rst_n                  (pwrup_rst_n                  ),
           .rst_n                        (rst_n                        ),

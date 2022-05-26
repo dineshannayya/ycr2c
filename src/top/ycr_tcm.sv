@@ -56,53 +56,53 @@ module ycr_tcm
 
 `ifndef YCR_TCM_MEM
     // SRAM0 PORT-0
-    output  logic                           sram0_clk0,
-    output  logic                           sram0_csb0,
-    output  logic                           sram0_web0,
-    output  logic   [8:0]                   sram0_addr0,
-    output  logic   [3:0]                   sram0_wmask0,
-    output  logic   [31:0]                  sram0_din0,
-    input   logic   [31:0]                  sram0_dout0,
+    output  logic                          sram0_clk0,
+    output  logic                          sram0_csb0,
+    output  logic                          sram0_web0,
+    output  logic   [8:0]                  sram0_addr0,
+    output  logic   [3:0]                  sram0_wmask0,
+    output  logic   [31:0]                 sram0_din0,
+    input   logic   [31:0]                 sram0_dout0,
 
     // SRAM-0 PORT-1
-    output  logic                           sram0_clk1,
-    output  logic                           sram0_csb1,
-    output  logic  [8:0]                    sram0_addr1,
-    input   logic  [31:0]                   sram0_dout1,
+    output  logic                          sram0_clk1,
+    output  logic                          sram0_csb1,
+    output  logic  [8:0]                   sram0_addr1,
+    input   logic  [31:0]                  sram0_dout1,
 
     // SRAM1 PORT-0
-    output  logic                           sram1_clk0,
-    output  logic                           sram1_csb0,
-    output  logic                           sram1_web0,
-    output  logic   [8:0]                   sram1_addr0,
-    output  logic   [3:0]                   sram1_wmask0,
-    output  logic   [31:0]                  sram1_din0,
-    input   logic   [31:0]                  sram1_dout0,
+    output  logic                          sram1_clk0,
+    output  logic                          sram1_csb0,
+    output  logic                          sram1_web0,
+    output  logic   [8:0]                  sram1_addr0,
+    output  logic   [3:0]                  sram1_wmask0,
+    output  logic   [31:0]                 sram1_din0,
+    input   logic   [31:0]                 sram1_dout0,
 
     // SRAM-1 PORT-1
-    output  logic                           sram1_clk1,
-    output  logic                           sram1_csb1,
-    output  logic  [8:0]                    sram1_addr1,
-    input   logic  [31:0]                   sram1_dout1,
+    output  logic                          sram1_clk1,
+    output  logic                          sram1_csb1,
+    output  logic  [8:0]                   sram1_addr1,
+    input   logic  [31:0]                  sram1_dout1,
 
 `endif
 
     // Core instruction interface
-    output  logic                           imem_req_ack,
-    input   logic                           imem_req,
+    output  logic                          imem_req_ack,
+    input   logic                          imem_req,
     input   logic [`YCR_IMEM_AWIDTH-1:0]   imem_addr,
     output  logic [`YCR_IMEM_DWIDTH-1:0]   imem_rdata,
-    output  logic [1:0]                     imem_resp,
+    output  logic [1:0]                    imem_resp,
 
     // Core data interface
-    output  logic                           dmem_req_ack,
-    input   logic                           dmem_req,
-    input   logic                           dmem_cmd,
-    input   logic [1:0]                     dmem_width,
+    output  logic                          dmem_req_ack,
+    input   logic                          dmem_req,
+    input   logic                          dmem_cmd,
+    input   logic [1:0]                    dmem_width,
     input   logic [`YCR_DMEM_AWIDTH-1:0]   dmem_addr,
     input   logic [`YCR_DMEM_DWIDTH-1:0]   dmem_wdata,
     output  logic [`YCR_DMEM_DWIDTH-1:0]   dmem_rdata,
-    output  logic [1:0]                     dmem_resp
+    output  logic [1:0]                    dmem_resp
 );
 
 //-------------------------------------------------------------------------------
@@ -113,43 +113,69 @@ logic                               dmem_rd;
 logic                               dmem_wr;
 logic [`YCR_DMEM_DWIDTH-1:0]       dmem_writedata;
 logic [`YCR_DMEM_DWIDTH-1:0]       dmem_rdata_local;
-logic [3:0]                         dmem_byteen;
-logic [1:0]                         dmem_rdata_shift_reg;
+logic [3:0]                        dmem_byteen;
+logic [1:0]                        dmem_rdata_shift_reg;
+
+// As SRAM Read data is launched at negedge, to meet the read path timing we
+// are registering read path
+logic [`YCR_IMEM_DWIDTH-1:0]       imem_rdata_int;
+logic [1:0]                        imem_resp_int;
+
+logic [`YCR_IMEM_DWIDTH-1:0]       dmem_rdata_int;
+logic [1:0]                        dmem_resp_int;
 //-------------------------------------------------------------------------------
 // Core interface
 //-------------------------------------------------------------------------------
 
 
+// Two cycle response generation to match the SRAM read response delay
 always_ff @(posedge clk, negedge rst_n) begin
     if (~rst_n) begin
-        imem_resp <= YCR_MEM_RESP_NOTRDY;
+        imem_resp_int <= YCR_MEM_RESP_NOTRDY;
 	imem_req_ack <= '0;
     end else if (imem_req && !imem_req_ack) begin
 	imem_req_ack <= '1;
-        imem_resp    <= YCR_MEM_RESP_NOTRDY;
+        imem_resp_int    <= YCR_MEM_RESP_NOTRDY;
     end else if (imem_req_ack) begin
 	imem_req_ack <= '0;
-        imem_resp    <= YCR_MEM_RESP_RDY_OK;
+        imem_resp_int    <= YCR_MEM_RESP_RDY_OK;
     end else begin
-        imem_resp    <= YCR_MEM_RESP_NOTRDY;
+        imem_resp_int    <= YCR_MEM_RESP_NOTRDY;
     end
 end
 
+// Two cycle response generation to match the SRAM read response delay
 always_ff @(posedge clk, negedge rst_n) begin
     if (~rst_n) begin
-        dmem_resp <= YCR_MEM_RESP_NOTRDY;
+        dmem_resp_int <= YCR_MEM_RESP_NOTRDY;
 	dmem_req_ack <= '0;
     end else if (dmem_req && !dmem_req_ack) begin
 	dmem_req_ack <= '1;
-        dmem_resp    <= YCR_MEM_RESP_NOTRDY;
+        dmem_resp_int    <= YCR_MEM_RESP_NOTRDY;
     end else if (dmem_req_ack) begin
 	dmem_req_ack <= '0;
-        dmem_resp    <= YCR_MEM_RESP_RDY_OK ;
+        dmem_resp_int    <= YCR_MEM_RESP_RDY_OK ;
     end else begin
-        dmem_resp    <= YCR_MEM_RESP_NOTRDY;
+        dmem_resp_int    <= YCR_MEM_RESP_NOTRDY;
     end
 end
 
+// Registering SRAM Read path to break half cycle path
+always_ff @(posedge clk, negedge rst_n) begin
+    if (~rst_n) begin
+        imem_resp     <= YCR_MEM_RESP_NOTRDY;
+	imem_rdata    <= 'h0;
+
+        dmem_resp     <= YCR_MEM_RESP_NOTRDY;
+	dmem_rdata    <= 'h0;
+    end else begin
+        imem_resp     <= imem_resp_int;
+	imem_rdata    <= imem_rdata_int;
+
+        dmem_resp     <= dmem_resp_int;
+	dmem_rdata    <= dmem_rdata_int;
+    end
+end
 //-------------------------------------------------------------------------------
 // Memory data composing
 //-------------------------------------------------------------------------------
@@ -186,7 +212,7 @@ assign sram1_csb1 =!(imem_req & dmem_req_ack & imem_addr[11] == 1'b1);
 assign sram1_addr1 = imem_addr[10:2];
 
 // IMEM Read Data Selection Based on Address bit[11]
-assign imem_rdata  = (imem_sram_sel == 1'b0) ?  sram0_dout1: sram1_dout1;
+assign imem_rdata_int  = (imem_sram_sel == 1'b0) ?  sram0_dout1: sram1_dout1;
 
 // SRAM-0 Port 0 Control Generation
 assign sram0_clk0 = clk;
@@ -256,7 +282,7 @@ ycr_dp_memory #(
 // Data memory output generation
 //-------------------------------------------------------------------------------
 
-assign dmem_rdata = dmem_rdata_local >> ( 8 * dmem_rdata_shift_reg );
+assign dmem_rdata_int = dmem_rdata_local >> ( 8 * dmem_rdata_shift_reg );
 
 endmodule : ycr_tcm
 

@@ -53,6 +53,10 @@
 `endif // YCR_IPIC_EN
 
 module ycr_core_top (
+`ifdef USE_POWER_PINS
+    input logic                                     vccd1,    // User area 1 1.8V supply
+    input logic                                     vssd1,    // User area 1 digital ground
+`endif
     // Common
     input   logic                                   pwrup_rst_n,                // Power-Up reset
     input   logic                                   rst_n,                      // Regular reset
@@ -227,10 +231,27 @@ localparam int unsigned YCR_CLUSTER_TOP_RST_SYNC_STAGES_NUM            = 2;
 // CORE HART ID
 wire logic [`YCR_XLEN-1:0]        core_fuse_mhartid_i = {30'h0,core_uid}; // Fuse MHARTID value
 
+// IMEM Retiming 
+logic                                   imem2core_req_ack_int;      // IMEM request acknowledge
+logic                                   core2imem_req_int;          // IMEM request
+logic                                   core2imem_cmd_int;          // IMEM command
+logic [`YCR_IMEM_AWIDTH-1:0]            core2imem_addr_int;         // IMEM address
+logic [`YCR_IMEM_BSIZE-1:0]             core2imem_bl_int;           // IMEM address
+
+// DMEM Retiming
+logic                                   dmem2core_req_ack_int;      // DMEM request acknowledge
+logic                                   core2dmem_req_int;          // DMEM request
+logic                                   core2dmem_cmd_int;          // DMEM command
+logic[1:0]                              core2dmem_width_int;        // DMEM data width
+logic [`YCR_DMEM_AWIDTH-1:0]            core2dmem_addr_int;         // DMEM address
+logic [`YCR_DMEM_DWIDTH-1:0]            core2dmem_wdata_int;        // DMEM write data
 
 wire  test_mode = 1'b0;
 wire  test_rst_n = 1'b0;
 assign clk_o = clk;
+
+
+
 //-------------------------------------------------------------------------------
 // Reset Logic
 //-------------------------------------------------------------------------------
@@ -360,6 +381,56 @@ assign core_rdc_qlfy_o      = core_rst_n_qlfy;
 assign core_rst_n_o         = core_rst_n;
 
 //-------------------------------------------------------------------------------
+// Retiming block to break the Timing Path
+//-------------------------------------------------------------------------------
+// Breaking Timing Path for core_imem
+ycr_req_retiming #(.FIFO_WIDTH(`YCR_IMEM_AWIDTH+`YCR_IMEM_BSIZE+1))
+                 u_core_imem_retim 
+		 (
+
+                   .clk                 (clk                       ),  // Core clock
+                   .rst_n               (core_rst_n                ) ,
+                   
+                   .req_ack             (imem2core_req_ack_int     ), 
+                   .req                 (core2imem_req_int         ), 
+                   .wdata               ({core2imem_cmd_int,
+		                          core2imem_addr_int,
+					  core2imem_bl_int
+		                         }), 
+
+                   .req_ack_int         (imem2core_req_ack_i), 
+                   .req_int             (core2imem_req_o    ), 
+                   .rdata               ({core2imem_cmd_o,
+		                          core2imem_addr_o,
+					  core2imem_bl_o
+		                         })  
+		 );
+
+// Breaking Timing Path for core_dmem
+ycr_req_retiming #(.FIFO_WIDTH(`YCR_IMEM_AWIDTH+`YCR_DMEM_DWIDTH+2+1))
+                 u_core_dmem_retim 
+		 (
+
+                   .clk                 (clk                       ),  // Core clock
+                   .rst_n               (core_rst_n                ) ,
+                   
+                   .req_ack             (dmem2core_req_ack_int     ), 
+                   .req                 (core2dmem_req_int         ), 
+                   .wdata               ({core2dmem_cmd_int,
+		                          core2dmem_width_int,
+		                          core2dmem_addr_int,
+					  core2dmem_wdata_int
+		                         }), 
+
+                   .req_ack_int         (dmem2core_req_ack_i), 
+                   .req_int             (core2dmem_req_o    ), 
+                   .rdata               ({core2dmem_cmd_o,
+		                          core2dmem_width_o,
+		                          core2dmem_addr_o,
+					  core2dmem_wdata_o
+		                         })  
+		 );
+//-------------------------------------------------------------------------------
 // YCR pipeline
 //-------------------------------------------------------------------------------
 ycr_pipe_top i_pipe_top (
@@ -382,21 +453,21 @@ ycr_pipe_top i_pipe_top (
 `endif // YCR_CLKCTRL_EN
 
     // Instruction memory interface
-    .pipe2imem_req_o                (core2imem_req_o        ),
-    .pipe2imem_cmd_o                (core2imem_cmd_o        ),
-    .pipe2imem_addr_o               (core2imem_addr_o       ),
-    .pipe2imem_bl_o                 (core2imem_bl_o         ),
-    .imem2pipe_req_ack_i            (imem2core_req_ack_i    ),
+    .pipe2imem_req_o                (core2imem_req_int      ),
+    .pipe2imem_cmd_o                (core2imem_cmd_int      ),
+    .pipe2imem_addr_o               (core2imem_addr_int     ),
+    .pipe2imem_bl_o                 (core2imem_bl_int       ),
+    .imem2pipe_req_ack_i            (imem2core_req_ack_int  ),
     .imem2pipe_rdata_i              (imem2core_rdata_i      ),
     .imem2pipe_resp_i               (imem2core_resp_i       ),
 
     // Data memory interface
-    .pipe2dmem_req_o                (core2dmem_req_o        ),
-    .pipe2dmem_cmd_o                (core2dmem_cmd_o        ),
-    .pipe2dmem_width_o              (core2dmem_width_o      ),
-    .pipe2dmem_addr_o               (core2dmem_addr_o       ),
-    .pipe2dmem_wdata_o              (core2dmem_wdata_o      ),
-    .dmem2pipe_req_ack_i            (dmem2core_req_ack_i    ),
+    .pipe2dmem_req_o                (core2dmem_req_int      ),
+    .pipe2dmem_cmd_o                (core2dmem_cmd_int      ),
+    .pipe2dmem_width_o              (core2dmem_width_int    ),
+    .pipe2dmem_addr_o               (core2dmem_addr_int     ),
+    .pipe2dmem_wdata_o              (core2dmem_wdata_int    ),
+    .dmem2pipe_req_ack_i            (dmem2core_req_ack_int  ),
     .dmem2pipe_rdata_i              (dmem2core_rdata_i      ),
     .dmem2pipe_resp_i               (dmem2core_resp_i       ),
 
