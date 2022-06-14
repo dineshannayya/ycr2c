@@ -18,9 +18,9 @@ iverilog -g2012 \
 -I ../../tb/ \
 -D YCR_CFG_RV32IMC_MAX \
 -D RTL \
-../../tb/ycr2_top_tb_wb.sv \
--o ycr2_top_tb_wb.vvp
+../../tb/ycr_top_tb_wb.sv \
+-o ycr_top_tb_wb.vvp
 
 
 # 3. In Build test directory, keep required number of test file in test_info file and run below command
-vvp -M. -msystem ycr2_top_tb_wb.vvp +test_info=test_info +test_results=test_results.txt +imem_pattern=FFFFFFFF +dmem_pattern=FFFFFFFF | tee sim_results.txt
+vvp -M. -msystem ycr_top_tb_wb.vvp +test_info=test_info +test_results=test_results.txt +imem_pattern=FFFFFFFF +dmem_pattern=FFFFFFFF | tee sim_results.txt

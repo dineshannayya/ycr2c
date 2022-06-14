@@ -64,15 +64,16 @@
 ////                                                              ////
 //////////////////////////////////////////////////////////////////////
 
-// Note: This logic assumes there are 8 Request 
 
-module ycr_arb(
-	input logic        clk, 
-	input logic        rstn, 
-	input logic [3:0]  req,  // Request
-	input logic        req_ack,  // Request
-	input logic        lack,  // Ack
-	output logic [3:0] gnt   // Grant
+module ycr_arb #(parameter TREQ = 2,
+                 parameter TREQ_DW   = $clog2(TREQ))
+(
+	input logic             clk, 
+	input logic             rstn, 
+	input logic [TREQ-1:0]  req,  // Request
+	input logic             req_ack,  // Request
+	input logic             lack,  // Ack
+	output logic [TREQ_DW:0]gnt   // Grant
        );
 
 ///////////////////////////////////////////////////////////////////////
@@ -85,19 +86,17 @@ parameter       FSM_GRANT      = 2'b00,
                 WAIT_REQ_ACK   = 2'b01,
                 WAIT_LACK      = 2'b10;
 
-parameter       GRANT0     = 3'b000;
-parameter       GRANT1     = 3'b001;
-parameter       GRANT2     = 3'b010;
-parameter       GRANT3     = 3'b011;
-parameter       GRANTX     = 3'b111;
+
+parameter       GRANT0     = {TREQ_DW+1{1'b0}}; // ALl Zero
+parameter       GRANTX     = {TREQ_DW+1{1'b1}}; // All One
 
 ///////////////////////////////////////////////////////////////////////
 // Local Registers and Wires
 //////////////////////////////////////////////////////////////////////
 
-reg [1:0]     	state, next_state;
-reg [2:0]       next_gnt;
-reg [1:0]       ngnt,next_ngnt; // 1 Bit less than gnt to take care of roll over
+reg [1:0]     	    state, next_state;
+reg [TREQ_DW:0]    next_gnt,grnt_tmp;
+reg [TREQ_DW-1:0]  ngnt,next_ngnt; // 1 Bit less than gnt to take care of roll over
 
 ///////////////////////////////////////////////////////////////////////
 //  Misc Logic 
@@ -123,7 +122,6 @@ always@(posedge clk or negedge rstn)
 //   - parks at last grant
 //////////////////////////////////////////////////////////////////////
 
-logic [3:0] grnt_tmp;
 
 always_comb
    begin
@@ -138,10 +136,10 @@ always_comb
 	     // To take care of case, where risc core can abrutly can
 	     // de-assert req, do take care of jump cases
 	     if(grnt_tmp != GRANTX) begin
-		 next_gnt  = {1'b0,grnt_tmp[1:0]};
+		 next_gnt  = {1'b0,grnt_tmp[TREQ_DW-1:0]};
 		 if(req_ack) begin
 	            grnt_tmp =  next_gnt+1;
-		    next_ngnt =   grnt_tmp[1:0];
+		    next_ngnt =   grnt_tmp[TREQ_DW-1:0];
 	     	    next_state   = WAIT_LACK;
 	         end else begin
 	     	    next_state   = WAIT_REQ_ACK;
@@ -151,7 +149,7 @@ always_comb
 	 WAIT_REQ_ACK: begin
 	      if(req_ack) begin
 	         grnt_tmp      =next_gnt+1;
-		 next_ngnt    = grnt_tmp[1:0];
+		 next_ngnt    = grnt_tmp[TREQ_DW-1:0];
 	     	 next_state   = WAIT_LACK;
 	      end else if(req[gnt] == 0) begin // Exit if request is abortly removed
 	     	 next_state   = FSM_GRANT;
@@ -167,20 +165,16 @@ always_comb
    end
 
 
-function [2:0] get_gnt;
+function [TREQ_DW:0] get_gnt;
 input [15:0] req; // 2*N request
-input [2:0]  cur_gnt; // current grnt id
-begin
-   if(req[cur_gnt]+0 ) begin
-   	get_gnt      = cur_gnt;
-   end else if(req[cur_gnt+1]) begin
-   	get_gnt      = cur_gnt+1;
-   end else if(req[cur_gnt+2]) begin
-   	get_gnt      = cur_gnt+2;
-   end else if(req[cur_gnt+3]) begin
-   	get_gnt      = cur_gnt+3;
-   end else begin
-   	get_gnt      = GRANTX;
+input [TREQ_DW:0]  cur_gnt; // current grnt id
+integer index;
+begin 
+   get_gnt = GRANTX;
+   for(index=0;index  < TREQ;index=index+1)
+   begin
+      if(req[cur_gnt+index] ) 
+   	get_gnt      = cur_gnt+index;
    end
 end
 endfunction

@@ -157,6 +157,8 @@ module dcache_top #(
 
 	input logic                        cfg_pfet_dis,      // To disable Next Pre data Pre fetch, default = 0
 	input logic                        cfg_force_flush,   // Flush all the content to memory with dirty
+	input logic                        cfg_bypass_dcache, // dcache disabled
+
 	output logic                       force_flush_done,
 
 	//  CPU I/F
@@ -293,7 +295,7 @@ reg [5:0] flush_loc_cnt;
 // Func
 
 // Generate Wishbone Write Select
-function automatic logic[3:0] ycr1_conv_mem2wb_be (
+function automatic logic[3:0] ycr_conv_mem2wb_be (
 	input logic [1:0] hwidth,
 	input logic [1:0] haddr
 );
@@ -311,11 +313,11 @@ begin
             hbel_in = 4'b1111;
         end
     endcase
-    ycr1_conv_mem2wb_be = hbel_in;
+    ycr_conv_mem2wb_be = hbel_in;
 end
 endfunction
 
-function automatic logic[WB_DW-1:0] ycr1_conv_mem2wb_wdata (
+function automatic logic[WB_DW-1:0] ycr_conv_mem2wb_wdata (
     input   logic [1:0]                    dmem_width,
     input   logic   [1:0]                  dmem_addr,
     input   logic   [WB_DW-1:0]    dmem_wdata
@@ -360,13 +362,13 @@ begin
         default : begin
         end
     endcase
-    ycr1_conv_mem2wb_wdata = tmp;
+    ycr_conv_mem2wb_wdata = tmp;
 end
 endfunction
 
 
 //Generate cpu read data based on width and address[1:0]
-function automatic logic[WB_DW-1:0] ycr1_conv_wb2mem_rdata (
+function automatic logic[WB_DW-1:0] ycr_conv_wb2mem_rdata (
     input   logic [1:0]                 hwidth,
     input   logic [1:0]                 haddr,
     input   logic [WB_DW-1:0]  hrdata
@@ -399,7 +401,7 @@ begin
         default : begin
         end
     endcase
-    ycr1_conv_wb2mem_rdata = tmp;
+    ycr_conv_wb2mem_rdata = tmp;
 end
 endfunction
 
@@ -416,8 +418,8 @@ wire [$clog2(CACHESIZE)-1:0]  next_prefetch_ptr = prefetch_ptr[4:0] + 1;
 
 logic [31:0] mem2wb_data_l;
 
-wire [31:0] mem2wb_data  = ycr1_conv_mem2wb_wdata(cpu_mem_width,cpu_mem_addr[1:0], cpu_mem_wdata);
-wire [31:0] wb2mem_data  = ycr1_conv_wb2mem_rdata(cpu_width_l,cpu_addr_l[1:0], wb_app_dat_i);
+wire [31:0] mem2wb_data  = ycr_conv_mem2wb_wdata(cpu_mem_width,cpu_mem_addr[1:0], cpu_mem_wdata);
+wire [31:0] wb2mem_data  = ycr_conv_wb2mem_rdata(cpu_width_l,cpu_addr_l[1:0], wb_app_dat_i);
 
 always@(posedge mclk or negedge rst_n)
 begin
@@ -496,9 +498,13 @@ begin
 	 tag_uptr          <= '0;
 	 tag_wdata         <= '0;
 
+	 if(cfg_bypass_dcache) begin
+	     state            <= IDLE;
+	 end
+
 	// Check if the current address is next location of same cache offset
 	// if yes, pick the data from prefetch content
-	 if(!cfg_pfet_dis && cpu_mem_req && (!cpu_mem_cmd) && prefetch_val && 
+	 else if(!cfg_pfet_dis && cpu_mem_req && (!cpu_mem_cmd) && prefetch_val && 
 	     (cpu_mem_addr[31:2] == {cpu_addr_l[31:7], prefetch_ptr[4:0]})) begin
 	      cpu_mem_req_ack  <= 1'b1;
 	      state            <= PREFETCH_START;
@@ -513,7 +519,7 @@ begin
 	        cpu_wr_l         <= cpu_mem_cmd;
 	        cpu_width_l      <= cpu_mem_width;
 		mem2wb_data_l    <= mem2wb_data;
-	        cpu_be_l         <= ycr1_conv_mem2wb_be(cpu_mem_width,cpu_mem_addr[1:0]);
+	        cpu_be_l         <= ycr_conv_mem2wb_be(cpu_mem_width,cpu_mem_addr[1:0]);
 		prefetch_val     <= 1'b0;
 	        cpu_mem_req_ack  <= 1'b1;
 	        state            <= TAG_COMPARE;
@@ -592,7 +598,7 @@ begin
 
        CACHE_RDATA_FETCH2: begin
 	  cache_mem_csb1   <= 1'b1;
-          cpu_mem_rdata    <= ycr1_conv_wb2mem_rdata(cpu_width_l,cpu_addr_l[1:0], cache_mem_dout1);
+          cpu_mem_rdata    <= ycr_conv_wb2mem_rdata(cpu_width_l,cpu_addr_l[1:0], cache_mem_dout1);
 	  cpu_mem_resp     <= 2'b01;
 	  state            <= CACHE_RDATA_FETCH3;
        end
@@ -607,7 +613,7 @@ begin
        PREFETCH_START: begin
 	      cpu_mem_req_ack = 1'b0;
 	     // Ack with Prefect data
-              cpu_mem_rdata     <= ycr1_conv_wb2mem_rdata(cpu_mem_width,cpu_mem_addr[1:0], prefetch_data);
+              cpu_mem_rdata     <= ycr_conv_wb2mem_rdata(cpu_mem_width,cpu_mem_addr[1:0], prefetch_data);
 	      cpu_mem_resp     <= 2'b01;
 
 	      // Goahead for next data prefetech in same cache index
@@ -758,6 +764,9 @@ begin
 
        // Prefill all the cache location with 512 word burst command
        CACHE_PREFILL_REQ: begin
+	 if(cfg_bypass_dcache) begin
+	     state            <= IDLE;
+	 end else begin
 	      wb_app_stb_o      <= 1'b1;
 	      wb_app_we_o       <= 1'b0;
 	      wb_app_adr_o      <= {DMEM_BASE,20'h0,5'b0,2'b0};
@@ -766,6 +775,7 @@ begin
               cache_mem_ptr     <= '0;
               cache_mem_offset  <= '0;
 	      state             <= CACHE_PREFILL_ACTION;
+	  end
        end
        // CACHE Prefill action based on application ack
        // Based on ack increment for ptr, 

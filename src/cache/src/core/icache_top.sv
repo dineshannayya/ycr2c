@@ -135,6 +135,7 @@ module icache_top #(
 
 	input logic                        cfg_pfet_dis,      // To disable Next Pre data Pre fetch, default = 0
 	input logic                        cfg_ntag_pfet_dis, // To disable next Tag refill, default = 0
+	input logic                        cfg_bypass_icache, // icache disabled
 
 	//  CPU I/F
         input logic                        cpu_mem_req,  // strobe/request
@@ -270,7 +271,7 @@ reg [3:0] state;
 // Function
 
 //Generate cpu read data based on width and address[1:0]
-function automatic logic[WB_DW-1:0] ycr1_conv_wb2mem_rdata (
+function automatic logic[WB_DW-1:0] ycr_conv_wb2mem_rdata (
     input   logic [1:0]                 hwidth,
     input   logic [1:0]                 haddr,
     input   logic [WB_DW-1:0]  hrdata
@@ -303,7 +304,7 @@ begin
         default : begin
         end
     endcase
-    ycr1_conv_wb2mem_rdata = tmp;
+    ycr_conv_wb2mem_rdata = tmp;
 end
 endfunction
 
@@ -345,7 +346,7 @@ begin
       cache_mem_hval    <= 1'b0;
       cache_mem_hdata   <= '0;
       cache_refill_req  <= '0;
-      cache_prefill_req <= '1;
+      cache_prefill_req <= '0;
       cache_refill_addr <= '0;
 
       state             <= CACHE_PREFILL_WAIT;
@@ -356,10 +357,12 @@ begin
 
 	 cache_mem_ptr     <= '0;
 
-
+	 if(cfg_bypass_icache) begin
+	     state            <= IDLE;
+	 end
 	// Check if the current address is next location of same cache offset
 	// if yes, pick the data from prefetch content
-	 if(!cfg_pfet_dis && cpu_mem_req && prefetch_val && 
+	 else if(!cfg_pfet_dis && cpu_mem_req && prefetch_val && 
 	     (cpu_mem_addr[31:2] == {cpu_addr_l[31:7], prefetch_ptr[CACHE_LINE_WD-1:0]})) begin
              cpu_mem_req_ack  <= '1;
 	     state            <= PREFETCH_START;
@@ -428,7 +431,7 @@ begin
        end
 
        CACHE_RDATA_FETCH2: begin
-          cpu_mem_rdata     <= ycr1_conv_wb2mem_rdata(cpu_width_l,cpu_addr_l[1:0], cache_mem_dout1); 
+          cpu_mem_rdata     <= ycr_conv_wb2mem_rdata(cpu_width_l,cpu_addr_l[1:0], cache_mem_dout1); 
 	  if(cpu_bl_l == 'h1) begin // Check if it's last access of burst
 	      cache_mem_csb1   <= 1'b1;
 	      cpu_mem_resp     <= 2'b11; // Last Ack
@@ -459,7 +462,7 @@ begin
        end
        PREFETCH_START: begin
               cpu_mem_req_ack  <= '0;
-              cpu_mem_rdata    <= ycr1_conv_wb2mem_rdata(cpu_mem_width,cpu_mem_addr[1:0], prefetch_data);
+              cpu_mem_rdata    <= ycr_conv_wb2mem_rdata(cpu_mem_width,cpu_mem_addr[1:0], prefetch_data);
 	      if(cpu_mem_bl == 'h1)
 	          cpu_mem_resp     <= 2'b11; // Last Access
 	      else
@@ -517,10 +520,14 @@ begin
       // and does complete cache line fill in one go
       // --------------------------------------------------------
       CACHE_PREFILL_WAIT: begin
-	  if(cache_busy == 1) begin
+	 if(cfg_bypass_icache) begin
+	     state            <= IDLE;
+	 end else if(cache_busy == 1) begin
 	     cache_prefill_req <= 0;
-	     state       <= CACHE_PREFILL_DONE;
-	  end
+	     state             <= CACHE_PREFILL_DONE;
+         end else begin
+	     cache_prefill_req <= 1;
+         end
       end
 
      CACHE_PREFILL_DONE: begin
@@ -606,8 +613,8 @@ icache_app_fsm  #(
         .cache_mem_wmask0             (cache_mem_wmask0    ), // WMASK#
         .cache_mem_din0               (cache_mem_din0      ), // Write Data
                                                            
-        .cache_refill_req             (cache_refill_req    ),
-        .cache_prefill_req            (cache_prefill_req   ),
+        .cache_refill_req             (cache_refill_req    ), // cache re-fill request
+        .cache_prefill_req            (cache_prefill_req   ), // cache pre fill request
 	.cache_busy                   (cache_busy          )
 
 

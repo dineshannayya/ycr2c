@@ -1,7 +1,7 @@
 
 #include <stdio.h>
 #include <verilated.h>
-#include "Vycr1_top_tb_axi.h"
+#include "Vycr_top_tb_ahb.h"
 #ifdef VCD_TRACE
 #include "verilated_vcd_c.h"
 #endif // #ifdef VCD_TRACE
@@ -9,14 +9,15 @@
 #define STRINGIFY(s) _STRINGIFY(s)
 #define _STRINGIFY(s) #s
 
-Vycr1_top_tb_axi *top;
+Vycr_top_tb_ahb *top;
 
 vluint64_t main_time = 0;
 
 int main(int argc, char** argv) {
     Verilated::commandArgs(argc, argv);
 
-    top = new Vycr1_top_tb_axi;
+    top = new Vycr_top_tb_ahb;
+
 #ifdef VCD_TRACE
     Verilated::traceEverOn(true);
     VerilatedVcdC* tfp = new VerilatedVcdC;

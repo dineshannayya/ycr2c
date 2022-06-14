@@ -18,7 +18,7 @@ localparam [31:0]      YCR_SIM_PRINT_ADDR     = 32'hF000_0000;
 localparam [31:0]      YCR_SIM_EXT_IRQ_ADDR   = 32'hF000_0100;
 localparam [31:0]      YCR_SIM_SOFT_IRQ_ADDR  = 32'hF000_0200;
 
-module ycr2_top_tb_wb (
+module ycr_top_tb_wb (
 `ifdef VERILATOR
     input logic clk
 `endif // VERILATOR
@@ -74,8 +74,10 @@ logic   [YCR_WB_WIDTH-1:0]             wbd_dmem_adr_o; // address
 logic                                   wbd_dmem_we_o;  // write
 logic   [YCR_WB_WIDTH-1:0]             wbd_dmem_dat_o; // data output
 logic   [3:0]                           wbd_dmem_sel_o; // byte enable
+logic   [YCR_WB_BL_DMEM-1:0]           wbd_dmem_bl_o; // byte enable
 logic   [YCR_WB_WIDTH-1:0]             wbd_dmem_dat_i; // data input
 logic                                   wbd_dmem_ack_i; // acknowlegement
+logic                                   wbd_dmem_lack_i; // acknowlegement
 logic                                   wbd_dmem_err_i; // error
 
 int unsigned                            f_results     ;
@@ -374,6 +376,8 @@ ycr2_top_wb i_top (
     .core_debug_sel         (2'h0                   ),
     .cfg_sram_lphase        (4'hF                   ),
     .cfg_cache_ctrl         (3'b0                   ),
+    .cfg_bypass_icache      (1'b0                   ),
+    .cfg_bypass_dcache      (1'b0                   ),
 
 `ifdef YCR_DBG_EN
     .sys_rst_n_o            (                       ),
@@ -507,8 +511,10 @@ ycr2_top_wb i_top (
     .wbd_dmem_we_o          (wbd_dmem_we_o          ),
     .wbd_dmem_dat_o         (wbd_dmem_dat_o         ),
     .wbd_dmem_sel_o         (wbd_dmem_sel_o         ),
+    .wbd_dmem_bl_o          (wbd_dmem_bl_o          ),
     .wbd_dmem_dat_i         (wbd_dmem_dat_i         ),
     .wbd_dmem_ack_i         (wbd_dmem_ack_i         ),
+    .wbd_dmem_lack_i        (wbd_dmem_lack_i        ),
     .wbd_dmem_err_i         (wbd_dmem_err_i         )
 
 );
@@ -636,9 +642,10 @@ ycr_memory_tb_wb #(
     .wbd_dmem_we_i          (wbd_dmem_we_o          ),
     .wbd_dmem_dat_i         (wbd_dmem_dat_o         ),
     .wbd_dmem_sel_i         (wbd_dmem_sel_o         ),
-    .wbd_dmem_bl_i          ('h1                    ),
+    .wbd_dmem_bl_i          (wbd_dmem_bl_o          ),
     .wbd_dmem_dat_o         (wbd_dmem_dat_i         ),
     .wbd_dmem_ack_o         (wbd_dmem_ack_i         ),
+    .wbd_dmem_lack_o        (wbd_dmem_lack_i        ),
     .wbd_dmem_err_o         (wbd_dmem_err_i         )
 
 );
@@ -691,13 +698,13 @@ end
 initial
 begin
    $dumpfile("simx.vcd");
-   $dumpvars(0,ycr2_top_tb_wb);
-   //$dumpvars(0,ycr2_top_tb_wb.i_top);
-   //$dumpvars(0,ycr2_top_tb_wb.i_top.i_core_top_0.i_pipe_top.i_pipe_mprf);
+   $dumpvars(0,ycr_top_tb_wb);
+   //$dumpvars(0,ycr_top_tb_wb.i_top);
+   //$dumpvars(0,ycr_top_tb_wb.i_top.i_core_top.i_pipe_top.i_pipe_mprf);
 end
 `endif
 
 
 
-endmodule : ycr2_top_tb_wb
+endmodule : ycr_top_tb_wb
 
