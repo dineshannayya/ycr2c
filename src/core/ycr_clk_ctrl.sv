@@ -20,7 +20,7 @@
 ////  yifive clock control                                                ////
 ////                                                                      ////
 ////  This file is part of the yifive cores project                       ////
-////  https://github.com/dineshannayya/ycr2c.git                           ////
+////  https://github.com/dineshannayya/ycr.git                           ////
 ////                                                                      ////
 ////  Description:                                                        ////
 ////     clock control                                                    ////
@@ -29,10 +29,12 @@
 ////    nothing                                                           ////
 ////                                                                      ////
 ////  Author(s):                                                          ////
-////      - Dinesh Annayya, dinesha@opencores.org                         ////
+////     - syntacore, https://github.com/syntacore/scr1                   ////
+////     - Dinesh Annayya, dinesha@opencores.org                          ////
 ////                                                                      ////
 ////  Revision :                                                          ////
-////     v0:    Jan 2021- Initial version picked from syntacore/scr1      ////
+////     v0:    Jan 2021- Initial version picked from                     ////
+////             https://github.com/syntacore/scr1                        ////
 ////     v1:    June 7, 2021, Dinesh A                                    ////
 ////             opentool(iverilog/yosys) related cleanup                 ////
 ////                                                                      ////
