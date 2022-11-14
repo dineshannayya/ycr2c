@@ -29,7 +29,8 @@
 ////    nothing                                                           ////
 ////                                                                      ////
 ////  Authors:                                                            ////
-////      Dinesh Annayya, dinesha@opencores.org                           ////
+////     - syntacore, https://github.com/syntacore/scr1                   ////
+////     - Dinesh Annayya, dinesha@opencores.org                          ////
 ////                                                                      ////
 ////  CPU Memory Map:                                                     ////
 ////            0x0000_0000 to 0x07FF_FFFF (128MB) - ICACHE               ////
@@ -89,8 +90,15 @@
 ////           To improve the timing, request re-timing are added at      ////
 ////           iconnect block, In MPW-6 shows Riscv core meeting timing   ////
 ////           for 100Mhz                                                 ////
+////     2.2:  June 3, 2022, Dinesh A                                     ////
+////           Replaced DFFRAM with SRAM Memory                           ////
 ////     2.3:  June 12, 2022, Dinesh A                                    ////
 ////           icache and dcache bypass config added                      ////
+////     2.4:  Aug 20, 2022, Dinesh A                                     ////
+////           Increase total external interrupt from 16 to 32            ////
+////     2.5:  Nov 7, 2022, Dinesh A                                      ////
+////           Added Interface to integrate AES core                      ////
+////           Added Interface to integrate FPU core                      ////
 ////                                                                      ////
 //////////////////////////////////////////////////////////////////////////////
 
@@ -111,9 +119,17 @@ module ycr2_top_wb                      (
          input logic                          vccd1,    // User area 1 1.8V supply
          input logic                          vssd1,    // User area 1 digital ground
 `endif
-    input  logic   [3:0]                      cfg_cska_riscv,
+    // WB Clock Skew Control
+    input  logic   [3:0]                      cfg_wcska_riscv_intf,
     input  logic                              wbd_clk_int,
-    output logic                              wbd_clk_riscv,
+    output logic                              wbd_clk_skew ,
+
+    // RISCV Clock Skew Control
+    input  logic   [3:0]                      cfg_ccska_riscv_intf,
+    input  logic   [3:0]                      cfg_ccska_riscv_icon,
+    input  logic   [3:0]                      cfg_ccska_riscv_core0,
+    input  logic   [3:0]                      cfg_ccska_riscv_core1,
+    input  logic                              core_clk_int,
 
     // Control
     input   logic                             pwrup_rst_n,            // Power-Up Reset
@@ -127,7 +143,6 @@ module ycr2_top_wb                      (
     input   logic                             cfg_bypass_dcache,  // 1 => Bypass dcache
     // input   logic                          test_mode,              // Test mode - unused
     // input   logic                          test_rst_n,             // Test mode's reset - unused
-    input   logic                             core_clk,               // Core clock
     input   logic                             rtc_clk,                // Real-time clock
     output  logic [63:0]                      riscv_debug,
 `ifdef YCR_DBG_EN
@@ -255,7 +270,27 @@ module ycr2_top_wb                      (
     input   logic   [YCR_WB_WIDTH-1:0]   wbd_dmem_dat_i, // data input
     input   logic                        wbd_dmem_ack_i, // acknowlegement
     input   logic                        wbd_dmem_lack_i, // acknowlegement
-    input   logic                        wbd_dmem_err_i  // error
+    input   logic                        wbd_dmem_err_i,  // error
+
+    // AES DMEM I/F
+    input    logic                       aes_dmem_req_ack          ,
+    output   logic                       aes_dmem_req              ,
+    output   logic                       aes_dmem_cmd              ,
+    output   logic [1:0]                 aes_dmem_width            ,
+    output   logic [6:0]                 aes_dmem_addr             ,
+    output   logic [`YCR_DMEM_DWIDTH-1:0]aes_dmem_wdata            ,
+    input    logic [`YCR_DMEM_DWIDTH-1:0]aes_dmem_rdata            ,
+    input    logic [1:0]                 aes_dmem_resp             ,
+
+    // FPU DMEM I/F
+    input    logic                       fpu_dmem_req_ack          ,
+    output   logic                       fpu_dmem_req              ,
+    output   logic                       fpu_dmem_cmd              ,
+    output   logic [1:0]                 fpu_dmem_width            ,
+    output   logic [4:0]                 fpu_dmem_addr             ,
+    output   logic [`YCR_DMEM_DWIDTH-1:0]fpu_dmem_wdata            ,
+    input    logic [`YCR_DMEM_DWIDTH-1:0]fpu_dmem_rdata            ,
+    input    logic [1:0]                 fpu_dmem_resp             
 );
 
 //-------------------------------------------------------------------------------
@@ -372,6 +407,10 @@ logic [3:0]                                        core_clk_out;
 
 
 logic                                              cfg_dcache_force_flush;
+
+logic                                              core_clk_intf_skew;
+logic                                              core_clk_icon_skew;
+logic                                              core_clk_core0_skew;
 //-------------------------------------------------------------------------------
 // YCR Intf instance
 //-------------------------------------------------------------------------------
@@ -383,7 +422,12 @@ ycr2_iconnect u_connect (
           .cfg_bypass_icache            (cfg_bypass_icache            ), // 1 -> Bypass icache
           .cfg_bypass_dcache            (cfg_bypass_dcache            ), // 1 -> Bypass dcache
 
-          .core_clk                     (core_clk                     ), // Core clock to match clock latency
+          // Core clock skew control
+          .cfg_ccska                    (cfg_ccska_riscv_icon         ),
+          .core_clk_int                 (core_clk_int                 ),
+          .core_clk_skew                (core_clk_icon_skew           ),
+          .core_clk                     (core_clk_icon_skew           ), // Core clock
+
           .rtc_clk                      (rtc_clk                      ), // Core clock
 	  .pwrup_rst_n                  (pwrup_rst_n                  ),
           .cpu_intf_rst_n               (cpu_intf_rst_n               ), // CPU reset
@@ -502,9 +546,26 @@ ycr2_iconnect u_connect (
           .sram0_clk1                   (sram0_clk1                   ),
           .sram0_csb1                   (sram0_csb1                   ),
           .sram0_addr1                  (sram0_addr1                  ),
-          .sram0_dout1                  (sram0_dout1                  )
+          .sram0_dout1                  (sram0_dout1                  ),
  
 `endif
+          .aes_dmem_req_ack             (aes_dmem_req_ack             ),
+          .aes_dmem_req                 (aes_dmem_req                 ),
+          .aes_dmem_cmd                 (aes_dmem_cmd                 ),
+          .aes_dmem_width               (aes_dmem_width               ),
+          .aes_dmem_addr                (aes_dmem_addr                ),
+          .aes_dmem_wdata               (aes_dmem_wdata               ),
+          .aes_dmem_rdata               (aes_dmem_rdata               ),
+          .aes_dmem_resp                (aes_dmem_resp                ),
+
+          .fpu_dmem_req_ack             (fpu_dmem_req_ack             ),
+          .fpu_dmem_req                 (fpu_dmem_req                 ),
+          .fpu_dmem_cmd                 (fpu_dmem_cmd                 ),
+          .fpu_dmem_width               (fpu_dmem_width               ),
+          .fpu_dmem_addr                (fpu_dmem_addr                ),
+          .fpu_dmem_wdata               (fpu_dmem_wdata               ),
+          .fpu_dmem_rdata               (fpu_dmem_rdata               ),
+          .fpu_dmem_resp                (fpu_dmem_resp                )
 );
 
 //----------------------------------------------------------------------
@@ -517,13 +578,20 @@ ycr_intf u_intf(
     .vssd1                     (vssd1), // User area 1 digital ground
 `endif
 
-    .cfg_cska_riscv            (cfg_cska_riscv            ),
-    .wbd_clk_int               (wbd_clk_int               ),
-    .wbd_clk_riscv             (wbd_clk_riscv             ),
+     // Core clock skew control
+    .cfg_ccska                (cfg_ccska_riscv_intf      ),
+    .core_clk_int             (core_clk_int              ),
+    .core_clk_skew            (core_clk_intf_skew        ),
+    .core_clk                 (core_clk_intf_skew        ), // Core clock
+
+
+     // WB  clock skew control
+    .cfg_wcska                (cfg_wcska_riscv_intf      ),
+    .wbd_clk_int              (wbd_clk_int               ),
+    .wbd_clk_skew             (wbd_clk_skew              ),
 
     // Control
     .pwrup_rst_n               (pwrup_rst_n               ), // Power-Up Reset
-    .core_clk                  (core_clk                  ), // Core clock
     .cpu_intf_rst_n            (cpu_intf_rst_n            ), // CPU interface reset
 
     .cfg_icache_pfet_dis       (cfg_cache_ctrl[0]         ),
@@ -661,7 +729,13 @@ ycr_core_top i_core_top_0 (
           .pwrup_rst_n                  (pwrup_rst_n                  ),
           .rst_n                        (rst_n                        ),
           .cpu_rst_n                    (cpu_core_rst_n[0]            ),
-          .clk                          (core_clk                     ),
+          // Core clock skew control
+          .cfg_ccska                    (cfg_ccska_riscv_core0        ),
+          .core_clk_int                 (core_clk_int                 ),
+          .core_clk_skew                (core_clk_core0_skew          ),
+          .clk                          (core_clk_core0_skew          ),
+
+
           .clk_o                        (core_clk_out[0]              ),
           .core_rst_n_o                 (                             ),
           .core_rdc_qlfy_o              (                             ),
@@ -731,7 +805,12 @@ ycr_core_top i_core_top_1 (
           .pwrup_rst_n                  (pwrup_rst_n                  ),
           .rst_n                        (rst_n                        ),
           .cpu_rst_n                    (cpu_core_rst_n[1]            ),
-          .clk                          (core_clk                     ),
+          // Core clock skew control
+          .cfg_ccska                    (cfg_ccska_riscv_core1        ),
+          .core_clk_int                 (core_clk_int                 ),
+          .core_clk_skew                (core_clk_core1_skew          ),
+          .clk                          (core_clk_core1_skew          ),
+
           .clk_o                        (core_clk_out[1]              ),
           .core_rst_n_o                 (                             ),
           .core_rdc_qlfy_o              (                             ),

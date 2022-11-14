@@ -56,6 +56,10 @@ module ycr2_iconnect (
 `endif
 
     // Control
+    input   logic [3:0]                  cfg_ccska     ,
+    input   logic                        core_clk_int  ,
+    output  logic                        core_clk_skew ,
+
     input   logic                        core_clk,               // Core clock
     input   logic                        rtc_clk,                // Real-time clock
     input   logic                        pwrup_rst_n,            // Power-Up Reset
@@ -162,6 +166,26 @@ module ycr2_iconnect (
     input    logic [`YCR_DMEM_DWIDTH-1:0]   core_dmem_rdata           ,
     input    logic [1:0]                    core_dmem_resp            ,
 
+    // AES DMEM I/F
+    input    logic                          aes_dmem_req_ack          ,
+    output   logic                          aes_dmem_req              ,
+    output   logic                          aes_dmem_cmd              ,
+    output   logic [1:0]                    aes_dmem_width            ,
+    output   logic [6:0]                    aes_dmem_addr             ,
+    output   logic [`YCR_DMEM_DWIDTH-1:0]   aes_dmem_wdata            ,
+    input    logic [`YCR_DMEM_DWIDTH-1:0]   aes_dmem_rdata            ,
+    input    logic [1:0]                    aes_dmem_resp             ,
+
+    // FPU DMEM I/F
+    input    logic                          fpu_dmem_req_ack          ,
+    output   logic                          fpu_dmem_req              ,
+    output   logic                          fpu_dmem_cmd              ,
+    output   logic [1:0]                    fpu_dmem_width            ,
+    output   logic [4:0]                    fpu_dmem_addr             ,
+    output   logic [`YCR_DMEM_DWIDTH-1:0]   fpu_dmem_wdata            ,
+    input    logic [`YCR_DMEM_DWIDTH-1:0]   fpu_dmem_rdata            ,
+    input    logic [1:0]                    fpu_dmem_resp             ,
+
 `ifndef YCR_TCM_MEM
     // SRAM-0 PORT-0
     output  logic                        sram0_clk0,
@@ -213,6 +237,16 @@ logic [`YCR_DMEM_DWIDTH-1:0]                       tcm_dmem_rdata;
 logic [1:0]                                        tcm_dmem_resp;
 `endif // YCR_TCM_EN
 
+// Data memory interface from router to memory-mapped local
+logic                                              local_dmem_req_ack;
+logic                                              local_dmem_req;
+logic                                              local_dmem_cmd;
+logic [1:0]                                        local_dmem_width;
+logic [`YCR_DMEM_AWIDTH-1:0]                       local_dmem_addr;
+logic [`YCR_DMEM_DWIDTH-1:0]                       local_dmem_wdata;
+logic [`YCR_DMEM_DWIDTH-1:0]                       local_dmem_rdata;
+logic [1:0]                                        local_dmem_resp;
+
 // Data memory interface from router to memory-mapped timer
 logic                                              timer_dmem_req_ack;
 logic                                              timer_dmem_req;
@@ -243,6 +277,8 @@ logic [1:0]                                        timer_dmem_resp;
 logic [31:0]                                       riscv_glbl_cfg          ;   
 logic [63:0]                                       timer_val               ;                // Machine timer value
 logic                                              timer_irq               ;
+logic [`YCR_DMEM_AWIDTH-1:0]                       aes_dmem_addr_tmp       ;
+logic [`YCR_DMEM_AWIDTH-1:0]                       fpu_dmem_addr_tmp       ;
 
 //-----------------------------------------------------------------------------------
 // Variable for sram mux for sram0
@@ -311,6 +347,23 @@ assign core2_timer_irq          = timer_irq     ;
 
 assign core3_timer_val          = timer_val     ;                // Machine timer value
 assign core3_timer_irq          = timer_irq     ;
+
+assign aes_dmem_addr            = aes_dmem_addr_tmp[6:0];
+assign fpu_dmem_addr            = fpu_dmem_addr_tmp[4:0];
+
+//--------------------------------------------
+// RISCV clock skew control
+//--------------------------------------------
+clk_skew_adjust u_skew_core_clk
+       (
+`ifdef USE_POWER_PINS
+     .vccd1                   (vccd1                   ),// User area 1 1.8V supply
+     .vssd1                   (vssd1                   ),// User area 1 digital ground
+`endif
+	    .clk_in               (core_clk_int            ), 
+	    .sel                  (cfg_ccska               ), 
+	    .clk_out              (core_clk_skew           ) 
+       );
 //-------------------------------------------------------------------------------
 // Reset logic
 //-------------------------------------------------------------------------------
@@ -466,17 +519,76 @@ ycr2_cross_bar u_crossbar (
 `endif // YCR_TCM_EN
 
     // Interface to memory-mapped timer
-    .port4_req_ack         (timer_dmem_req_ack         ),
-    .port4_req             (timer_dmem_req             ),
-    .port4_cmd             (timer_dmem_cmd             ),
-    .port4_width           (timer_dmem_width           ),
-    .port4_addr            (timer_dmem_addr            ),
+    .port4_req_ack         (local_dmem_req_ack         ),
+    .port4_req             (local_dmem_req             ),
+    .port4_cmd             (local_dmem_cmd             ),
+    .port4_width           (local_dmem_width           ),
+    .port4_addr            (local_dmem_addr            ),
     .port4_bl              (                           ), // Not Supported
-    .port4_wdata           (timer_dmem_wdata           ),
-    .port4_rdata           (timer_dmem_rdata           ),
-    .port4_resp            (timer_dmem_resp            )
+    .port4_wdata           (local_dmem_wdata           ),
+    .port4_rdata           (local_dmem_rdata           ),
+    .port4_resp            (local_dmem_resp            )
 
 );
+
+/*************************************
+  Local Router for TIMER/AES
+**************************************/
+
+ycr_dmem_router 
+#(
+    .YCR_PORT1_ADDR_MASK   (YCR_TIMER_ADDR_MASK     ),
+    .YCR_PORT1_ADDR_PATTERN(YCR_TIMER_ADDR_PATTERN  ),
+    .YCR_PORT2_ADDR_MASK   (YCR_FPU_ADDR_MASK       ),
+    .YCR_PORT2_ADDR_PATTERN(YCR_FPU_ADDR_PATTERN    )
+) u_local_router
+(
+    // Control signals
+    .rst_n                  (cpu_intf_rst_n_sync        ),
+    .clk                    (core_clk                   ),
+
+    // Core interface
+    .dmem_req_ack           (local_dmem_req_ack         ),
+    .dmem_req               (local_dmem_req             ),
+    .dmem_cmd               (local_dmem_cmd             ),
+    .dmem_width             (local_dmem_width           ),
+    .dmem_addr              (local_dmem_addr            ),
+    .dmem_wdata             (local_dmem_wdata           ),
+    .dmem_rdata             (local_dmem_rdata           ),
+    .dmem_resp              (local_dmem_resp            ),
+
+    // PORT0 interface
+    .port0_req_ack          (aes_dmem_req_ack           ),
+    .port0_req              (aes_dmem_req               ),
+    .port0_cmd              (aes_dmem_cmd               ),
+    .port0_width            (aes_dmem_width             ),
+    .port0_addr             (aes_dmem_addr_tmp          ),
+    .port0_wdata            (aes_dmem_wdata             ),
+    .port0_rdata            (aes_dmem_rdata             ),
+    .port0_resp             (aes_dmem_resp              ),
+
+    // PORT1 interface
+    .port1_req_ack          (timer_dmem_req_ack         ),
+    .port1_req              (timer_dmem_req             ),
+    .port1_cmd              (timer_dmem_cmd             ),
+    .port1_width            (timer_dmem_width           ),
+    .port1_addr             (timer_dmem_addr            ),
+    .port1_wdata            (timer_dmem_wdata           ),
+    .port1_rdata            (timer_dmem_rdata           ),
+    .port1_resp             (timer_dmem_resp            ),
+
+    // PORT1 interface
+    .port2_req_ack          (fpu_dmem_req_ack           ),
+    .port2_req              (fpu_dmem_req               ),
+    .port2_cmd              (fpu_dmem_cmd               ),
+    .port2_width            (fpu_dmem_width             ),
+    .port2_addr             (fpu_dmem_addr_tmp          ),
+    .port2_wdata            (fpu_dmem_wdata             ),
+    .port2_rdata            (fpu_dmem_rdata             ),
+    .port2_resp             (fpu_dmem_resp              )
+
+);
+
 
 
 `ifdef YCR_TCM_EN

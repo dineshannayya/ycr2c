@@ -368,10 +368,17 @@ end
 // Core instance
 //-------------------------------------------------------------------------------
 ycr2_top_wb i_top (
+
+    // RISCV Clock Skew Control
+    .cfg_ccska_riscv_intf   (4'h0                   ),
+    .cfg_ccska_riscv_icon   (4'h0                   ),
+    .cfg_ccska_riscv_core0  (4'h0                   ),
+    .core_clk_int           (clk                    ),
+
     // Reset
     .pwrup_rst_n            (rst_n                  ),
     .rst_n                  (rst_n                  ),
-    .cpu_core_rst_n         ({1'b0,rst_n}           ),
+    .cpu_core_rst_n         (rst_n                  ),
     .cpu_intf_rst_n         (rst_n                  ),
     .core_debug_sel         (2'h0                   ),
     .cfg_sram_lphase        (4'hF                   ),
@@ -385,7 +392,6 @@ ycr2_top_wb i_top (
 `endif // YCR_DBG_EN
 
     // Clock
-    .core_clk               (clk                    ),
     .rtc_clk                (rtc_clk                ),
     .riscv_debug            (                       ),
 
@@ -515,7 +521,26 @@ ycr2_top_wb i_top (
     .wbd_dmem_dat_i         (wbd_dmem_dat_i         ),
     .wbd_dmem_ack_i         (wbd_dmem_ack_i         ),
     .wbd_dmem_lack_i        (wbd_dmem_lack_i        ),
-    .wbd_dmem_err_i         (wbd_dmem_err_i         )
+    .wbd_dmem_err_i         (wbd_dmem_err_i         ),
+
+
+    .aes_dmem_req_ack       ( 1'b0),
+    .aes_dmem_req           (),
+    .aes_dmem_cmd           (),
+    .aes_dmem_width         (),
+    .aes_dmem_addr          (),
+    .aes_dmem_wdata         (),
+    .aes_dmem_rdata         ('h0),
+    .aes_dmem_resp          ('h0),
+
+    .fpu_dmem_req_ack       ( 1'b0),
+    .fpu_dmem_req           (),
+    .fpu_dmem_cmd           (),
+    .fpu_dmem_width         (),
+    .fpu_dmem_addr          (),
+    .fpu_dmem_wdata         (),
+    .fpu_dmem_rdata         ('h0),
+    .fpu_dmem_resp          ('h0)
 
 );
 

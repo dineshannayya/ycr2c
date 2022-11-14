@@ -125,7 +125,7 @@ wire core1_dmem_req_t = (core1_dmem_req & core1_dmem_tid == taget_id);
 
 
 // Arbitor to select between external wb vs uart wb
-wire [3:0] grnt;
+wire [2:0] grnt;
 
 ycr_arb #(.TREQ(4)) u_arb(
 	.clk      (clk                ), 
@@ -142,41 +142,41 @@ ycr_arb #(.TREQ(4)) u_arb(
 
 // Select  the master based on the grant
 assign core_req   = 
-	            (grnt == 4'b0000) ? core0_imem_req_t  : 
-	            (grnt == 4'b0001) ? core0_dmem_req_t  : 
-	            (grnt == 4'b0010) ? core1_imem_req_t  : 
-	            (grnt == 4'b0011) ? core1_dmem_req_t  : 
+	            (grnt == 3'b000) ? core0_imem_req_t  : 
+	            (grnt == 3'b001) ? core0_dmem_req_t  : 
+	            (grnt == 3'b010) ? core1_imem_req_t  : 
+	            (grnt == 3'b011) ? core1_dmem_req_t  : 
 		    'h0; 
 assign core_cmd   = 
-	            (grnt == 4'b0000) ? core0_imem_cmd  : 
-	            (grnt == 4'b0001) ? core0_dmem_cmd  : 
-	            (grnt == 4'b0010) ? core1_imem_cmd  : 
-	            (grnt == 4'b0011) ? core1_dmem_cmd  : 
+	            (grnt == 3'b000) ? core0_imem_cmd  : 
+	            (grnt == 3'b001) ? core0_dmem_cmd  : 
+	            (grnt == 3'b010) ? core1_imem_cmd  : 
+	            (grnt == 3'b011) ? core1_dmem_cmd  : 
 		    'h0; 
 	
 assign core_width = 
-	            (grnt == 4'b0000) ? core0_imem_width  : 
-	            (grnt == 4'b0001) ? core0_dmem_width  : 
-	            (grnt == 4'b0010) ? core1_imem_width  : 
-	            (grnt == 4'b0011) ? core1_dmem_width  : 
+	            (grnt == 3'b000) ? core0_imem_width  : 
+	            (grnt == 3'b001) ? core0_dmem_width  : 
+	            (grnt == 3'b010) ? core1_imem_width  : 
+	            (grnt == 3'b011) ? core1_dmem_width  : 
 		    'h0; 
 assign core_addr  = 
-	            (grnt == 4'b0000) ? core0_imem_addr  : 
-	            (grnt == 4'b0001) ? core0_dmem_addr  : 
-	            (grnt == 4'b0010) ? core1_imem_addr  : 
-	            (grnt == 4'b0011) ? core1_dmem_addr  : 
+	            (grnt == 3'b000) ? core0_imem_addr  : 
+	            (grnt == 3'b001) ? core0_dmem_addr  : 
+	            (grnt == 3'b010) ? core1_imem_addr  : 
+	            (grnt == 3'b011) ? core1_dmem_addr  : 
 		    'h0; 
 assign core_bl    = 
-	            (grnt == 4'b0000) ? core0_imem_bl  : 
-	            (grnt == 4'b0001) ? core0_dmem_bl  : 
-	            (grnt == 4'b0010) ? core1_imem_bl  : 
-	            (grnt == 4'b0011) ? core1_dmem_bl  : 
+	            (grnt == 3'b000) ? core0_imem_bl  : 
+	            (grnt == 3'b001) ? core0_dmem_bl  : 
+	            (grnt == 3'b010) ? core1_imem_bl  : 
+	            (grnt == 3'b011) ? core1_dmem_bl  : 
 		    'h0; 
 assign core_wdata = 
-	            (grnt == 4'b0000) ? core0_imem_wdata  : 
-	            (grnt == 4'b0001) ? core0_dmem_wdata  : 
-	            (grnt == 4'b0010) ? core1_imem_wdata  : 
-	            (grnt == 4'b0011) ? core1_dmem_wdata  : 
+	            (grnt == 3'b000) ? core0_imem_wdata  : 
+	            (grnt == 3'b001) ? core0_dmem_wdata  : 
+	            (grnt == 3'b010) ? core1_imem_wdata  : 
+	            (grnt == 3'b011) ? core1_dmem_wdata  : 
 		    'h0; 
 
 //-----------------------------------------------------------------------
