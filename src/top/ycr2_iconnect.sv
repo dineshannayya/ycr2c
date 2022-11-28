@@ -351,6 +351,12 @@ assign core3_timer_irq          = timer_irq     ;
 assign aes_dmem_addr            = aes_dmem_addr_tmp[6:0];
 assign fpu_dmem_addr            = fpu_dmem_addr_tmp[4:0];
 
+// OpenSource CTS tool does not work with buffer as source point
+// changed buf to max with select tied=0
+//ctech_clk_buf u_lineclk_buf  (.A(line_clk_16x_in),  .X(line_clk_16x));
+logic core_clk_cts;
+ctech_mux2x1 u_cclk_cts  (.A0(core_clk), .A1(1'b0), .S(1'b0), .X(core_clk_cts));
+
 //--------------------------------------------
 // RISCV clock skew control
 //--------------------------------------------
@@ -364,6 +370,7 @@ clk_skew_adjust u_skew_core_clk
 	    .sel                  (cfg_ccska               ), 
 	    .clk_out              (core_clk_skew           ) 
        );
+
 //-------------------------------------------------------------------------------
 // Reset logic
 //-------------------------------------------------------------------------------
@@ -374,7 +381,7 @@ ycr_reset_sync_cell #(
     .STAGES_AMOUNT       (YCR_CLUSTER_TOP_RST_SYNC_STAGES_NUM)
 ) i_cpu_intf_rstn_reset_sync (
     .rst_n          (pwrup_rst_n          ),
-    .clk            (core_clk             ),
+    .clk            (core_clk_cts         ),
     .test_rst_n     (test_rst_n           ),
     .test_mode      (test_mode            ),
     .rst_n_in       (cpu_intf_rst_n       ),
@@ -391,7 +398,7 @@ assign riscv_debug = (core_debug_sel == 2'b00) ? riscv_debug0 : riscv_debug1 ;
 ycr2_cross_bar u_crossbar (
     
     .rst_n                 (cpu_intf_rst_n_sync        ),
-    .clk                   (core_clk                   ),
+    .clk                   (core_clk_cts               ),
 
    
     .cfg_bypass_icache     (cfg_bypass_icache          ),
@@ -545,7 +552,7 @@ ycr_dmem_router
 (
     // Control signals
     .rst_n                  (cpu_intf_rst_n_sync        ),
-    .clk                    (core_clk                   ),
+    .clk                    (core_clk_cts               ),
 
     // Core interface
     .dmem_req_ack           (local_dmem_req_ack         ),
@@ -598,7 +605,8 @@ ycr_dmem_router
 ycr_tcm #(
     .YCR_TCM_SIZE  (`YCR_DMEM_AWIDTH'(~YCR_TCM_ADDR_MASK + 1'b1))
 ) i_tcm (
-    .clk            (core_clk             ),
+    .clk            (core_clk_cts         ), // core clock with cts
+    .clk_src        (core_clk             ), // core clk without cts
     .rst_n          (cpu_intf_rst_n_sync  ),
 
 `ifndef YCR_TCM_MEM
@@ -720,8 +728,8 @@ ycr_sram_mux  u_sram1_smux (
 ycr_timer i_timer (
     // Common
     .rst_n          (cpu_intf_rst_n_sync  ),
-    .clk            (core_clk          ),
-    .rtc_clk        (rtc_clk           ),
+    .clk            (core_clk_cts         ),
+    .rtc_clk        (rtc_clk              ),
 
     // Memory interface
     .dmem_req       (timer_dmem_req    ),

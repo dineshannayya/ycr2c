@@ -129,7 +129,7 @@ module ycr2_top_wb                      (
     input  logic   [3:0]                      cfg_ccska_riscv_icon,
     input  logic   [3:0]                      cfg_ccska_riscv_core0,
     input  logic   [3:0]                      cfg_ccska_riscv_core1,
-    input  logic                              core_clk_int,
+    input  logic   [5:0]                      core_clk_int,
 
     // Control
     input   logic                             pwrup_rst_n,            // Power-Up Reset
@@ -424,7 +424,7 @@ ycr2_iconnect u_connect (
 
           // Core clock skew control
           .cfg_ccska                    (cfg_ccska_riscv_icon         ),
-          .core_clk_int                 (core_clk_int                 ),
+          .core_clk_int                 (core_clk_int[1]              ),
           .core_clk_skew                (core_clk_icon_skew           ),
           .core_clk                     (core_clk_icon_skew           ), // Core clock
 
@@ -580,7 +580,7 @@ ycr_intf u_intf(
 
      // Core clock skew control
     .cfg_ccska                (cfg_ccska_riscv_intf      ),
-    .core_clk_int             (core_clk_int              ),
+    .core_clk_int             (core_clk_int[0]              ),
     .core_clk_skew            (core_clk_intf_skew        ),
     .core_clk                 (core_clk_intf_skew        ), // Core clock
 
@@ -731,7 +731,7 @@ ycr_core_top i_core_top_0 (
           .cpu_rst_n                    (cpu_core_rst_n[0]            ),
           // Core clock skew control
           .cfg_ccska                    (cfg_ccska_riscv_core0        ),
-          .core_clk_int                 (core_clk_int                 ),
+          .core_clk_int                 (core_clk_int[2]              ),
           .core_clk_skew                (core_clk_core0_skew          ),
           .clk                          (core_clk_core0_skew          ),
 
@@ -807,7 +807,7 @@ ycr_core_top i_core_top_1 (
           .cpu_rst_n                    (cpu_core_rst_n[1]            ),
           // Core clock skew control
           .cfg_ccska                    (cfg_ccska_riscv_core1        ),
-          .core_clk_int                 (core_clk_int                 ),
+          .core_clk_int                 (core_clk_int[3]              ),
           .core_clk_skew                (core_clk_core1_skew          ),
           .clk                          (core_clk_core1_skew          ),
 
