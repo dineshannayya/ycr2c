@@ -49,7 +49,7 @@
 //------------------------------------------------------------------------------
 
 // YCR1 core identifiers
-`define YCR_MIMPID             32'h22110700 // <YY[7:0]:MON[7:0]:DAY[7:0]:INTRA DAY[7:0]>
+`define YCR_MIMPID             32'h23030400 // <YY[7:0]:MON[7:0]:DAY[7:0]:INTRA DAY[7:0]>
 `define YCR_MVENDORID          32'h00000000
 `define YCR_NUMCORES           32'h00000002
 
@@ -61,8 +61,20 @@
 `define YCR_DMEM_DWIDTH        `YCR_XLEN
 `define YCR_IMEM_BSIZE         3          // BURST SIZE
 
-// TAP IDCODE
-`define YCR_TAP_IDCODE         'hDEB11001
+/****************************
+ TAP IDCODE
+31-28  - 4 bit Version
+27-16  - 12 bit Part Number 
+15-12  - 4 bit Core Number
+11-1   - 11 bit Manufacturer
+0      - Pre-set to logic 1
+
+*****************************/
+
+//`define YCR_TAP_IDCODE         'hDEB11001
+`define YCR_TAP_VER_IDCODE   4'hD
+`define YCR_TAP_PART_IDCODE  12'hEB1
+`define YCR_TAP_MANU_IDCODE  11'h000
 
 
 `ifdef YCR_ARCH_CUSTOM
@@ -118,10 +130,10 @@
 //  `define YCR_FAST_MUL               // enable fast one-cycle multiplication, otherwise multiplication takes 32 cycles
 //`define YCR_MPRF_RST_EN - yosys fix, two dimensional array init not allowed
   `define YCR_MCOUNTEN_EN            // enable custom MCOUNTEN CSR for counter control
-//`define YCR_DBG_EN                 // enable Debug Subsystem (TAPC, DM, SCU, HDU)
-//`define YCR_TDU_EN                 // enable Trigger Debug Unit (hardware breakpoints)
-//  parameter int unsigned YCR_TDU_TRIG_NUM = 4;
-// `define YCR_TDU_ICOUNT_EN          // enable hardware triggers on instruction counter
+`define YCR_DBG_EN                 // enable Debug Subsystem (TAPC, DM, SCU, HDU)
+`define YCR_TDU_EN                 // enable Trigger Debug Unit (hardware breakpoints)
+  parameter int unsigned YCR_TDU_TRIG_NUM = 4;
+ `define YCR_TDU_ICOUNT_EN          // enable hardware triggers on instruction counter
   `define YCR_IPIC_EN                // enable Integrated Programmable Interrupt Controller
   `define YCR_IPIC_SYNC_EN           // enable IPIC synchronizer
   `define YCR_TCM_EN

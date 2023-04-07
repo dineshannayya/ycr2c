@@ -375,6 +375,11 @@ ycr2_top_wb i_top (
     .cfg_ccska_riscv_core0  (4'h0                   ),
     .core_clk_int           (clk                    ),
 
+
+    .cfg_wcska_riscv_intf   (4'h0                   ),
+    .wbd_clk_int            (clk                    ),
+    .wbd_clk_skew           (                       ),
+
     // Reset
     .pwrup_rst_n            (rst_n                  ),
     .rst_n                  (rst_n                  ),
@@ -523,7 +528,7 @@ ycr2_top_wb i_top (
     .wbd_dmem_lack_i        (wbd_dmem_lack_i        ),
     .wbd_dmem_err_i         (wbd_dmem_err_i         ),
 
-
+    .cpu_clk_aes            (),
     .aes_dmem_req_ack       ( 1'b0),
     .aes_dmem_req           (),
     .aes_dmem_cmd           (),
@@ -533,6 +538,7 @@ ycr2_top_wb i_top (
     .aes_dmem_rdata         ('h0),
     .aes_dmem_resp          ('h0),
 
+    .cpu_clk_fpu            (),
     .fpu_dmem_req_ack       ( 1'b0),
     .fpu_dmem_req           (),
     .fpu_dmem_cmd           (),

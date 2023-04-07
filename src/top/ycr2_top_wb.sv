@@ -99,6 +99,11 @@
 ////     2.5:  Nov 7, 2022, Dinesh A                                      ////
 ////           Added Interface to integrate AES core                      ////
 ////           Added Interface to integrate FPU core                      ////
+////     2.6:  Mar 4, 2023, Dinesh A                                      ////
+////           Tap access is enabled                                      ////
+////     2.7:  Mar 10, 2023, Dinesh A                                     ////
+////            all cpu clock is branch are routed through iconnect       ////
+////                                                                      ////
 ////                                                                      ////
 //////////////////////////////////////////////////////////////////////////////
 
@@ -129,7 +134,7 @@ module ycr2_top_wb                      (
     input  logic   [3:0]                      cfg_ccska_riscv_icon,
     input  logic   [3:0]                      cfg_ccska_riscv_core0,
     input  logic   [3:0]                      cfg_ccska_riscv_core1,
-    input  logic   [5:0]                      core_clk_int,
+    input  logic                              core_clk_int,
 
     // Control
     input   logic                             pwrup_rst_n,            // Power-Up Reset
@@ -153,9 +158,6 @@ module ycr2_top_wb                      (
     output  logic                             sys_rdc_qlfy_o,         // System-to-External SOC Reset Domain Crossing Qualifier
 `endif // YCR_DBG_EN
 
-`ifdef YCR_DBG_EN
-    input   logic [31:0]                      fuse_idcode,            // TAPC IDCODE
-`endif // YCR_DBG_EN
 
     // IRQ
 `ifdef YCR_IPIC_EN
@@ -199,6 +201,7 @@ module ycr2_top_wb                      (
 
    `ifdef YCR_ICACHE_EN
    // Wishbone ICACHE I/F
+
    output logic                          wb_icache_stb_o, // strobe/request
    output logic   [YCR_WB_WIDTH-1:0]     wb_icache_adr_o, // address
    output logic                          wb_icache_we_o,  // write
@@ -273,6 +276,7 @@ module ycr2_top_wb                      (
     input   logic                        wbd_dmem_err_i,  // error
 
     // AES DMEM I/F
+    output   logic                       cpu_clk_aes               , 
     input    logic                       aes_dmem_req_ack          ,
     output   logic                       aes_dmem_req              ,
     output   logic                       aes_dmem_cmd              ,
@@ -283,6 +287,7 @@ module ycr2_top_wb                      (
     input    logic [1:0]                 aes_dmem_resp             ,
 
     // FPU DMEM I/F
+    output   logic                       cpu_clk_fpu               ,
     input    logic                       fpu_dmem_req_ack          ,
     output   logic                       fpu_dmem_req              ,
     output   logic                       fpu_dmem_cmd              ,
@@ -304,14 +309,12 @@ localparam int unsigned YCR_CLUSTER_TOP_RST_SYNC_STAGES_NUM            = 2;
 // Reset logic
 logic                                               pwrup_rst_n_sync;
 logic                                               cpu_rst_n_sync;
-`ifdef YCR_DBG_EN
-logic                                               tapc_trst_n;
-`endif // YCR_DBG_EN
 logic [`YCR_NUMCORES-1:0]                           cpu_core_rst_n_sync;        // CPU Reset (Core Reset)
 
 //----------------------------------------------------------------
 // CORE-0 Specific Signals
 // ---------------------------------------------------------------
+logic                                              core0_clk;
 logic [48:0]                                       core0_debug;
 logic [1:0]                                        core0_uid;
 logic                                              core0_timer_irq;
@@ -340,6 +343,7 @@ logic [1:0]                                        core0_dmem_resp;
 //----------------------------------------------------------------
 // CORE-1 Specific Signals
 // ---------------------------------------------------------------
+logic                                              core1_clk;
 logic [48:0]                                       core1_debug;
 logic [1:0]                                        core1_uid;
 logic                                              core1_timer_irq;
@@ -405,12 +409,17 @@ logic [1:0]                                        core_dcache_resp;
 
 logic [3:0]                                        core_clk_out;
 
-
 logic                                              cfg_dcache_force_flush;
 
 logic                                              core_clk_intf_skew;
 logic                                              core_clk_icon_skew;
 logic                                              core_clk_core0_skew;
+
+//------------------------------------------------------------------------------
+// Tap will be daisy chained Tap Input => <core0> <core1> => Tap Out
+//------------------------------------------------------------------------------
+logic                                              core0_tdo;
+
 //-------------------------------------------------------------------------------
 // YCR Intf instance
 //-------------------------------------------------------------------------------
@@ -424,7 +433,7 @@ ycr2_iconnect u_connect (
 
           // Core clock skew control
           .cfg_ccska                    (cfg_ccska_riscv_icon         ),
-          .core_clk_int                 (core_clk_int[1]              ),
+          .core_clk_int                 (core_clk_int                 ),
           .core_clk_skew                (core_clk_icon_skew           ),
           .core_clk                     (core_clk_icon_skew           ), // Core clock
 
@@ -441,12 +450,14 @@ ycr2_iconnect u_connect (
           .core_irq_soft_i              (soft_irq                     ),
 
     // CORE-0
+          .core0_clk                    (core0_clk                    ),
           .core0_debug                  (core0_debug                  ),
           .core0_uid                    (core0_uid                    ),
           .core0_timer_val              (core0_timer_val              ), // Machine timer value
           .core0_timer_irq              (core0_timer_irq              ), // Machine timer value
           .core0_irq_lines              (core0_irq_lines              ),
           .core0_irq_soft               (core0_soft_irq               ),
+
     // Instruction Memory Interface
           .core0_imem_req_ack           (core0_imem_req_ack           ), // IMEM request acknowledge
           .core0_imem_req               (core0_imem_req               ), // IMEM request
@@ -467,6 +478,7 @@ ycr2_iconnect u_connect (
           .core0_dmem_resp              (core0_dmem_resp              ), // DMEM response
 
     // CORE-1
+          .core1_clk                    (core1_clk                    ),
           .core1_debug                  (core1_debug                  ),
           .core1_uid                    (core1_uid                    ),
           .core1_timer_val              (core1_timer_val              ), // Machine timer value
@@ -496,6 +508,7 @@ ycr2_iconnect u_connect (
     //------------------------------------------------------------------
     // Toward ycr_intf
     // -----------------------------------------------------------------
+          .cpu_clk_intf                 (cpu_clk_intf                 ),
           .cfg_dcache_force_flush       (cfg_dcache_force_flush       ),
 
     // Interface to dmem router
@@ -549,6 +562,7 @@ ycr2_iconnect u_connect (
           .sram0_dout1                  (sram0_dout1                  ),
  
 `endif
+          .cpu_clk_aes                  (cpu_clk_aes                  ),
           .aes_dmem_req_ack             (aes_dmem_req_ack             ),
           .aes_dmem_req                 (aes_dmem_req                 ),
           .aes_dmem_cmd                 (aes_dmem_cmd                 ),
@@ -558,6 +572,7 @@ ycr2_iconnect u_connect (
           .aes_dmem_rdata               (aes_dmem_rdata               ),
           .aes_dmem_resp                (aes_dmem_resp                ),
 
+          .cpu_clk_fpu                  (cpu_clk_fpu                  ),
           .fpu_dmem_req_ack             (fpu_dmem_req_ack             ),
           .fpu_dmem_req                 (fpu_dmem_req                 ),
           .fpu_dmem_cmd                 (fpu_dmem_cmd                 ),
@@ -580,7 +595,7 @@ ycr_intf u_intf(
 
      // Core clock skew control
     .cfg_ccska                (cfg_ccska_riscv_intf      ),
-    .core_clk_int             (core_clk_int[0]              ),
+    .core_clk_int             (cpu_clk_intf              ),
     .core_clk_skew            (core_clk_intf_skew        ),
     .core_clk                 (core_clk_intf_skew        ), // Core clock
 
@@ -589,6 +604,7 @@ ycr_intf u_intf(
     .cfg_wcska                (cfg_wcska_riscv_intf      ),
     .wbd_clk_int              (wbd_clk_int               ),
     .wbd_clk_skew             (wbd_clk_skew              ),
+
 
     // Control
     .pwrup_rst_n               (pwrup_rst_n               ), // Power-Up Reset
@@ -654,7 +670,7 @@ ycr_intf u_intf(
 
    `ifdef YCR_ICACHE_EN
    // Wishbone ICACHE I/F
-   .wb_icache_cyc_o           (wb_icache_cyc_o            ), // strobe/request
+   .wb_icache_cyc_o           (                           ), // strobe/request
    .wb_icache_stb_o           (wb_icache_stb_o            ), // strobe/request
    .wb_icache_adr_o           (wb_icache_adr_o            ), // address
    .wb_icache_we_o            (wb_icache_we_o             ), // write
@@ -685,7 +701,7 @@ ycr_intf u_intf(
 
    `ifdef YCR_DCACHE_EN
    // Wishbone ICACHE I/F
-   .wb_dcache_cyc_o           (wb_dcache_cyc_o            ), // strobe/request
+   .wb_dcache_cyc_o           (                           ), // strobe/request
    .wb_dcache_stb_o           (wb_dcache_stb_o            ), // strobe/request
    .wb_dcache_adr_o           (wb_dcache_adr_o            ), // address
    .wb_dcache_we_o            (wb_dcache_we_o             ), // write
@@ -731,7 +747,7 @@ ycr_core_top i_core_top_0 (
           .cpu_rst_n                    (cpu_core_rst_n[0]            ),
           // Core clock skew control
           .cfg_ccska                    (cfg_ccska_riscv_core0        ),
-          .core_clk_int                 (core_clk_int[2]              ),
+          .core_clk_int                 (core0_clk                    ),
           .core_clk_skew                (core_clk_core0_skew          ),
           .clk                          (core_clk_core0_skew          ),
 
@@ -744,9 +760,6 @@ ycr_core_top i_core_top_0 (
           .sys_rdc_qlfy_o               (sys_rdc_qlfy_o               ),
 `endif // YCR_DBG_EN
 
-`ifdef YCR_DBG_EN
-          .tapc_fuse_idcode_i           (fuse_idcode                  ),
-`endif // YCR_DBG_EN
 
     // IRQ
 `ifdef YCR_IPIC_EN
@@ -757,12 +770,12 @@ ycr_core_top i_core_top_0 (
           .core_irq_soft_i              (core0_soft_irq               ),
 `ifdef YCR_DBG_EN
     // Debug interface
-          .tapc_trst_n                  (tapc_trst_n                  ),
+          .trst_n                       (trst_n                       ),
           .tapc_tck                     (tck                          ),
           .tapc_tms                     (tms                          ),
           .tapc_tdi                     (tdi                          ),
-          .tapc_tdo                     (tdo                          ),
-          .tapc_tdo_en                  (tdo_en                       ),
+          .tapc_tdo                     (core0_tdo                    ),
+          .tapc_tdo_en                  (                             ),
 `endif // YCR_DBG_EN
 
    //---- inter-connect
@@ -807,7 +820,7 @@ ycr_core_top i_core_top_1 (
           .cpu_rst_n                    (cpu_core_rst_n[1]            ),
           // Core clock skew control
           .cfg_ccska                    (cfg_ccska_riscv_core1        ),
-          .core_clk_int                 (core_clk_int[3]              ),
+          .core_clk_int                 (core1_clk                    ),
           .core_clk_skew                (core_clk_core1_skew          ),
           .clk                          (core_clk_core1_skew          ),
 
@@ -815,13 +828,10 @@ ycr_core_top i_core_top_1 (
           .core_rst_n_o                 (                             ),
           .core_rdc_qlfy_o              (                             ),
 `ifdef YCR_DBG_EN
-          .sys_rst_n_o                  (sys_rst_n_o                  ),
-          .sys_rdc_qlfy_o               (sys_rdc_qlfy_o               ),
+          .sys_rst_n_o                  (                             ), // unused for core-1
+          .sys_rdc_qlfy_o               (                             ), // unused for core-1
 `endif // YCR_DBG_EN
 
-`ifdef YCR_DBG_EN
-          .tapc_fuse_idcode_i           (fuse_idcode                  ),
-`endif // YCR_DBG_EN
 
     // IRQ
 `ifdef YCR_IPIC_EN
@@ -834,10 +844,10 @@ ycr_core_top i_core_top_1 (
 
 `ifdef YCR_DBG_EN
     // Debug interface
-          .tapc_trst_n                  (tapc_trst_n                  ),
+          .trst_n                       (trst_n                       ),
           .tapc_tck                     (tck                          ),
           .tapc_tms                     (tms                          ),
-          .tapc_tdi                     (tdi                          ),
+          .tapc_tdi                     (core0_tdo                    ), // daisy chain with core-0
           .tapc_tdo                     (tdo                          ),
           .tapc_tdo_en                  (tdo_en                       ),
 `endif // YCR_DBG_EN

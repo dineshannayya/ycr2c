@@ -35,6 +35,8 @@
 ////  Revision :                                                          ////
 ////     v0:    Feb 21, 2021, Dinesh A                                    ////
 ////             Initial version                                          ////
+////     v1:    Mar 10, 2023, Dinesh A                                    ////
+////            all cpu clock is branch are routed through iconnect       ////
 ////                                                                      ////
 //////////////////////////////////////////////////////////////////////////////
 
@@ -77,6 +79,7 @@ module ycr2_iconnect (
     input   logic                        cfg_bypass_dcache,  // bypass dchance
 
     // CORE-0
+    output   logic                          core0_clk                 ,
     input    logic   [48:0]                 core0_debug               ,
     output   logic     [1:0]                core0_uid                 ,
     output   logic [63:0]                   core0_timer_val           , // Machine timer value
@@ -104,6 +107,7 @@ module ycr2_iconnect (
     output   logic [1:0]                    core0_dmem_resp,           // DMEM response
 
     // CORE-1
+    output   logic                          core1_clk                 ,
     input    logic   [48:0]                 core1_debug               ,
     output   logic     [1:0]                core1_uid                 ,
     output   logic [63:0]                   core1_timer_val           , // Machine timer value
@@ -134,6 +138,8 @@ module ycr2_iconnect (
     //------------------------------------------------------------------
     // Toward ycr_intf
     // -----------------------------------------------------------------
+
+    output   logic                          cpu_clk_intf              ,
 
     // Instruction Memory Interface
     input    logic                          core_icache_req_ack       , // IMEM request acknowledge
@@ -167,6 +173,7 @@ module ycr2_iconnect (
     input    logic [1:0]                    core_dmem_resp            ,
 
     // AES DMEM I/F
+    output   logic                          cpu_clk_aes               ,
     input    logic                          aes_dmem_req_ack          ,
     output   logic                          aes_dmem_req              ,
     output   logic                          aes_dmem_cmd              ,
@@ -177,6 +184,7 @@ module ycr2_iconnect (
     input    logic [1:0]                    aes_dmem_resp             ,
 
     // FPU DMEM I/F
+    output   logic                          cpu_clk_fpu               ,
     input    logic                          fpu_dmem_req_ack          ,
     output   logic                          fpu_dmem_req              ,
     output   logic                          fpu_dmem_cmd              ,
@@ -307,6 +315,15 @@ logic   [31:0]                    sram1_din0_int       ; // Write Data
 // SRAM-0 PORT-1
 logic                             sram1_csb1_int       ; // CS#
 logic  [8:0]                      sram1_addr1_int      ; // Address
+
+//---------------------------------------------------------------------------------
+// Providing cpu clock feed through iconnect for better physical routing
+//---------------------------------------------------------------------------------
+assign core0_clk   = core_clk_int;
+assign core1_clk   = core_clk_int;
+assign cpu_clk_fpu = core_clk_int;
+assign cpu_clk_aes = core_clk_int;
+assign cpu_clk_intf = core_clk_int;
 
 //---------------------------------------------------------------------------------
 // To improve the physical routing irq signal are buffer inside the block
