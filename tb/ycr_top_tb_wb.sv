@@ -373,6 +373,7 @@ ycr2_top_wb i_top (
     .cfg_ccska_riscv_intf   (4'h0                   ),
     .cfg_ccska_riscv_icon   (4'h0                   ),
     .cfg_ccska_riscv_core0  (4'h0                   ),
+    .cfg_ccska_riscv_core1  (4'h0                   ),
     .core_clk_int           (clk                    ),
 
 
@@ -403,7 +404,7 @@ ycr2_top_wb i_top (
     // Fuses
     //.fuse_mhartid           (fuse_mhartid           ),
 `ifdef YCR_DBG_EN
-    .fuse_idcode            (`YCR_TAP_IDCODE       ),
+    //.fuse_idcode            (`YCR_TAP_IDCODE       ),
 `endif // YCR_DBG_EN
 
 `ifndef SCR1_TCM_MEM
