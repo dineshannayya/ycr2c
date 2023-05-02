@@ -103,6 +103,8 @@
 ////           Tap access is enabled                                      ////
 ////     2.7:  Mar 10, 2023, Dinesh A                                     ////
 ////            all cpu clock is branch are routed through iconnect       ////
+////     2.8:  May 1, 2023, Dinesh A                                      ////
+////           cpu clock gating feature added                             ////
 ////                                                                      ////
 ////                                                                      ////
 //////////////////////////////////////////////////////////////////////////////
@@ -285,6 +287,7 @@ module ycr2_top_wb                      (
     output   logic [`YCR_DMEM_DWIDTH-1:0]aes_dmem_wdata            ,
     input    logic [`YCR_DMEM_DWIDTH-1:0]aes_dmem_rdata            ,
     input    logic [1:0]                 aes_dmem_resp             ,
+    input    logic                       aes_idle                  ,
 
     // FPU DMEM I/F
     output   logic                       cpu_clk_fpu               ,
@@ -295,7 +298,8 @@ module ycr2_top_wb                      (
     output   logic [4:0]                 fpu_dmem_addr             ,
     output   logic [`YCR_DMEM_DWIDTH-1:0]fpu_dmem_wdata            ,
     input    logic [`YCR_DMEM_DWIDTH-1:0]fpu_dmem_rdata            ,
-    input    logic [1:0]                 fpu_dmem_resp             
+    input    logic [1:0]                 fpu_dmem_resp             ,
+    input    logic                       fpu_idle                   
 );
 
 //-------------------------------------------------------------------------------
@@ -438,11 +442,11 @@ ycr2_iconnect u_connect (
           .core_clk                     (core_clk_icon_skew           ), // Core clock
 
           .rtc_clk                      (rtc_clk                      ), // Core clock
-	  .pwrup_rst_n                  (pwrup_rst_n                  ),
+	      .pwrup_rst_n                  (pwrup_rst_n                  ),
           .cpu_intf_rst_n               (cpu_intf_rst_n               ), // CPU reset
 
           .core_debug_sel               (core_debug_sel               ),
-	  .riscv_debug                  (riscv_debug                  ),
+	      .riscv_debug                  (riscv_debug                  ),
           .cfg_sram_lphase              (cfg_sram_lphase[3:2]         ),
 
           // Interrupt buffering      
@@ -547,40 +551,42 @@ ycr2_iconnect u_connect (
         `endif // YCR_ICACHE_EN
 `ifndef YCR_TCM_MEM
     // SRAM-0 PORT-0
-          .sram0_clk0                   (sram0_clk0                   ),
-          .sram0_csb0                   (sram0_csb0                   ),
-          .sram0_web0                   (sram0_web0                   ),
-          .sram0_addr0                  (sram0_addr0                  ),
-          .sram0_wmask0                 (sram0_wmask0                 ),
-          .sram0_din0                   (sram0_din0                   ),
-          .sram0_dout0                  (sram0_dout0                  ),
+          .sram0_clk0                   (sram0_clk0                     ),
+          .sram0_csb0                   (sram0_csb0                     ),
+          .sram0_web0                   (sram0_web0                     ),
+          .sram0_addr0                  (sram0_addr0                    ),
+          .sram0_wmask0                 (sram0_wmask0                   ),
+          .sram0_din0                   (sram0_din0                     ),
+          .sram0_dout0                  (sram0_dout0                    ),
     
     // SRAM-0 PORT-1
-          .sram0_clk1                   (sram0_clk1                   ),
-          .sram0_csb1                   (sram0_csb1                   ),
-          .sram0_addr1                  (sram0_addr1                  ),
-          .sram0_dout1                  (sram0_dout1                  ),
+          .sram0_clk1                   (sram0_clk1                     ),
+          .sram0_csb1                   (sram0_csb1                     ),
+          .sram0_addr1                  (sram0_addr1                    ),
+          .sram0_dout1                  (sram0_dout1                    ),
  
 `endif
-          .cpu_clk_aes                  (cpu_clk_aes                  ),
-          .aes_dmem_req_ack             (aes_dmem_req_ack             ),
-          .aes_dmem_req                 (aes_dmem_req                 ),
-          .aes_dmem_cmd                 (aes_dmem_cmd                 ),
-          .aes_dmem_width               (aes_dmem_width               ),
-          .aes_dmem_addr                (aes_dmem_addr                ),
-          .aes_dmem_wdata               (aes_dmem_wdata               ),
-          .aes_dmem_rdata               (aes_dmem_rdata               ),
-          .aes_dmem_resp                (aes_dmem_resp                ),
+          .cpu_clk_aes                  (cpu_clk_aes                    ),
+          .aes_dmem_req_ack             (aes_dmem_req_ack               ),
+          .aes_dmem_req                 (aes_dmem_req                   ),
+          .aes_dmem_cmd                 (aes_dmem_cmd                   ),
+          .aes_dmem_width               (aes_dmem_width                 ),
+          .aes_dmem_addr                (aes_dmem_addr                  ),
+          .aes_dmem_wdata               (aes_dmem_wdata                 ),
+          .aes_dmem_rdata               (aes_dmem_rdata                 ),
+          .aes_dmem_resp                (aes_dmem_resp                  ),
+          .aes_idle                     (aes_idle                       ),
 
-          .cpu_clk_fpu                  (cpu_clk_fpu                  ),
-          .fpu_dmem_req_ack             (fpu_dmem_req_ack             ),
-          .fpu_dmem_req                 (fpu_dmem_req                 ),
-          .fpu_dmem_cmd                 (fpu_dmem_cmd                 ),
-          .fpu_dmem_width               (fpu_dmem_width               ),
-          .fpu_dmem_addr                (fpu_dmem_addr                ),
-          .fpu_dmem_wdata               (fpu_dmem_wdata               ),
-          .fpu_dmem_rdata               (fpu_dmem_rdata               ),
-          .fpu_dmem_resp                (fpu_dmem_resp                )
+          .cpu_clk_fpu                  (cpu_clk_fpu                    ),
+          .fpu_dmem_req_ack             (fpu_dmem_req_ack               ),
+          .fpu_dmem_req                 (fpu_dmem_req                   ),
+          .fpu_dmem_cmd                 (fpu_dmem_cmd                   ),
+          .fpu_dmem_width               (fpu_dmem_width                 ),
+          .fpu_dmem_addr                (fpu_dmem_addr                  ),
+          .fpu_dmem_wdata               (fpu_dmem_wdata                 ),
+          .fpu_dmem_rdata               (fpu_dmem_rdata                 ),
+          .fpu_dmem_resp                (fpu_dmem_resp                  ),
+          .fpu_idle                     (fpu_idle                       )
 );
 
 //----------------------------------------------------------------------

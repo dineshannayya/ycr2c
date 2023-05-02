@@ -66,16 +66,14 @@ end
 	 instr_count = 0;
  end
 
- /**
  always@(posedge `RISC_CORE.clk) begin
 	 if(rst_init) begin
 	     pc_count = 0;
 	 end else if(`RISC_EXU.pc_curr_upd) begin
-             $display("RISCV-DEBUG => Cnt: %x PC: %x", pc_count,`RISC_EXU.pc_curr_ff);
+             //$display("RISCV-DEBUG => Cnt: %x PC: %x", pc_count,`RISC_EXU.pc_curr_ff);
              pc_count = pc_count+1;
 	  end
  end
- ***/
  
  always@(posedge `RISC_CORE.clk) begin
 	 if(rst_init) begin
