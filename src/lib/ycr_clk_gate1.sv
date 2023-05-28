@@ -18,6 +18,27 @@ parameter DYCLK_GATE  = 2'b01 ;// Dynamic clock gate
 parameter FOCLK_GATE  = 2'b10 ;// Force   clock gate
 
 
+//--------------------------------
+// Double Sync the IDLE Signal
+//--------------------------------
+logic dst_idle_ss;
+ctech_dsync_high  #(.WB(1)) u_dst_idle_dsync(
+              .in_data    ( dst_idle     ),
+              .out_clk    ( clk_in       ),
+              .out_rst_n  ( reset_n      ),
+              .out_data   ( dst_idle_ss  )
+          );
+
+logic src_req_ss;
+ctech_dsync_high  #(.WB(1)) u_src_req_dsync(
+              .in_data    ( src_req      ),
+              .out_clk    ( clk_in       ),
+              .out_rst_n  ( reset_n      ),
+              .out_data   ( src_req_ss   )
+          );
+
+
+
 logic dst_idle_r,idle_his;
 logic [3:0] hcnt;
 
@@ -32,8 +53,8 @@ begin
       idle_his    <= 1'b1; // Idle removal histersis
       hcnt        <= 'h7;
    end else begin
-      dst_idle_r  <= dst_idle;
-      if(src_req || dst_idle == 0) begin
+      dst_idle_r  <= dst_idle_ss;
+      if(src_req_ss || dst_idle_ss == 0) begin
          hcnt        <= 'h7;
          idle_his    <= 1'b1;
       end else begin
@@ -67,9 +88,9 @@ always_comb begin
       NCLK_GATE:   clk_enb = 1'b1;
 
       // Dynamic Clock gating
-      DYCLK_GATE:  clk_enb = (src_req     == 1'b1) ? 1'b1 :
-                             (dst_idle_r  == 1'b0) ? 1'b1 : 
-                             (idle_his    == 1'b1) ? 1'b1 : 1'b0;
+      DYCLK_GATE:  clk_enb = (src_req_ss     == 1'b1) ? 1'b1 :
+                             (dst_idle_r  == 1'b0)    ? 1'b1 : 
+                             (idle_his    == 1'b1)    ? 1'b1 : 1'b0;
       // Force Clock Gating
       FOCLK_GATE:   clk_enb = 1'b0;
       default   :   clk_enb = 1;

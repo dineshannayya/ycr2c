@@ -70,7 +70,9 @@ module ycr_timer (
     output  logic                                   timer_irq,
 
     output  logic [31:0]                            riscv_glbl_cfg,
-    output  logic [31:0]                            riscv_clk_cfg
+    output  logic [23:0]                            riscv_clk_cfg,
+    output  logic [7:0]                             riscv_sleep,    // riscv core sleep level signal
+    input   logic [7:0]                             riscv_wakeup    // riscv core wakeup trigger
 );
 
 //-------------------------------------------------------------------------------
@@ -209,14 +211,46 @@ end
 // Clock control register
 always_ff @(posedge clk, negedge rst_n) begin
     if (~rst_n) begin
-        riscv_clk_cfg    <= '0;
+        riscv_clk_cfg[23:0]    <= '0;
     end else begin
         if (clk_cfg_up) begin
-            riscv_clk_cfg    <= dmem_wdata;
+            riscv_clk_cfg[23:0]    <= dmem_wdata[23:0];
         end 
     end
 end
 
+
+//------------------------
+// CPU core Sleep Register
+//   Set by CPU writting '1' and clean on wakeup
+//-------------------------
+// As there is large skew difference between wake-up signal from clock gating logic
+// better to double sync it to local clock
+logic [7:0] riscv_wakeup_ss;
+ctech_dsync_high  #(.WB(8)) u_wakeup_dsync(
+              .in_data    ( riscv_wakeup      ),
+              .out_clk    ( clk               ),
+              .out_rst_n  ( rst_n             ),
+              .out_data   ( riscv_wakeup_ss   )
+          );
+
+generate
+   genvar tcnt;
+   for (tcnt = 0; $unsigned(tcnt) < 8; tcnt=tcnt+1) begin : g_sleep
+
+    req_register #(0  ) u_sleep_req (
+    	      .cpu_we       (clk_cfg_up             ),
+    	      .cpu_req      (dmem_wdata[24+tcnt]    ),
+    	      .hware_ack    (riscv_wakeup_ss[tcnt]     ),
+    	      .reset_n      (rst_n                  ),
+    	      .clk          (clk                    ),
+    	      
+    	      //List of Outs
+    	      .data_out      (riscv_sleep[tcnt])
+              );
+
+   end
+   endgenerate
 
 //-------------------------------------------------------------------------------
 // Interrupt pending
@@ -293,7 +327,7 @@ always_ff @(negedge rst_n, posedge clk) begin
        dmem_addr_ff <= '0;
     end else begin
        dmem_req_valid <=  (dmem_req) && (dmem_req_ack == 0) &&  (dmem_width == YCR_MEM_WIDTH_WORD) & (~|dmem_addr[1:0]) &
-                          (dmem_addr[YCR_TIMER_ADDR_WIDTH-1:2] <= YCR_TIMER_MTIMECMPHI[YCR_TIMER_ADDR_WIDTH-1:2]);
+                          (dmem_addr[YCR_TIMER_ADDR_WIDTH-1:2] <= YCR_CLK_CONTROL[YCR_TIMER_ADDR_WIDTH-1:2]);
        dmem_req_ack   <= dmem_req & (dmem_req_ack ==0);
        dmem_cmd_ff    <= dmem_cmd;
        dmem_addr_ff   <= dmem_addr[YCR_TIMER_ADDR_WIDTH-1:0];
@@ -316,7 +350,7 @@ always_ff @(negedge rst_n, posedge clk) begin
                         YCR_TIMER_MTIMECMPLO   : dmem_rdata    <= mtimecmp_reg[31:0];
                         YCR_TIMER_MTIMECMPHI   : dmem_rdata    <= mtimecmp_reg[63:32];
                         YCR_GLBL_CONTROL       : dmem_rdata    <= riscv_glbl_cfg;
-                        YCR_CLK_CONTROL        : dmem_rdata    <= {8'h0,riscv_clk_cfg};
+                        YCR_CLK_CONTROL        : dmem_rdata    <= {riscv_sleep,riscv_clk_cfg};
                         default                 : begin end
                     endcase
                 end

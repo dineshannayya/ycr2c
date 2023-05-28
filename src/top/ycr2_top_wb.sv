@@ -319,6 +319,7 @@ logic [`YCR_NUMCORES-1:0]                           cpu_core_rst_n_sync;        
 // CORE-0 Specific Signals
 // ---------------------------------------------------------------
 logic                                              core0_clk;
+logic                                              core0_sleep;
 logic [48:0]                                       core0_debug;
 logic [1:0]                                        core0_uid;
 logic                                              core0_timer_irq;
@@ -348,6 +349,7 @@ logic [1:0]                                        core0_dmem_resp;
 // CORE-1 Specific Signals
 // ---------------------------------------------------------------
 logic                                              core1_clk;
+logic                                              core1_sleep;
 logic [48:0]                                       core1_debug;
 logic [1:0]                                        core1_uid;
 logic                                              core1_timer_irq;
@@ -455,6 +457,7 @@ ycr2_iconnect u_connect (
 
     // CORE-0
           .core0_clk                    (core0_clk                    ),
+          .core0_sleep                  (core0_sleep                  ),
           .core0_debug                  (core0_debug                  ),
           .core0_uid                    (core0_uid                    ),
           .core0_timer_val              (core0_timer_val              ), // Machine timer value
@@ -483,6 +486,7 @@ ycr2_iconnect u_connect (
 
     // CORE-1
           .core1_clk                    (core1_clk                    ),
+          .core1_sleep                  (core1_sleep                  ),
           .core1_debug                  (core1_debug                  ),
           .core1_uid                    (core1_uid                    ),
           .core1_timer_val              (core1_timer_val              ), // Machine timer value
@@ -766,6 +770,7 @@ ycr_core_top i_core_top_0 (
           .sys_rdc_qlfy_o               (sys_rdc_qlfy_o               ),
 `endif // YCR_DBG_EN
 
+          .core_sleep                    (core0_sleep                  ),
 
     // IRQ
 `ifdef YCR_IPIC_EN
@@ -838,6 +843,7 @@ ycr_core_top i_core_top_1 (
           .sys_rdc_qlfy_o               (                             ), // unused for core-1
 `endif // YCR_DBG_EN
 
+          .core_sleep                   (core1_sleep                  ),
 
     // IRQ
 `ifdef YCR_IPIC_EN

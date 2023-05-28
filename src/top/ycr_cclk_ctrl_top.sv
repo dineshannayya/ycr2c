@@ -35,8 +35,8 @@ module ycr_cclk_ctrl_top (
      input   logic                           fpu_idle            ,
      input   logic                           fpu_req             ,
 
-     input   logic                           core0_idle          ,
-     input   logic                           core1_idle          ,
+     input   logic  [7:0]                    riscv_sleep         ,
+     output  logic  [7:0]                    riscv_wakeup        ,
 
      input   logic                           timer_irq           ,
      input   logic [YCR_IRQ_LINES_NUM-1:0]   core_irq_lines_i    , // External interrupt request lines
@@ -58,6 +58,13 @@ module ycr_cclk_ctrl_top (
 ctech_clk_gate u_intf_clkgate (.GATE (1'b1), . CLK(core_clk_int), .GCLK(cpu_clk_intf));
 
 
+//-----------------------------------------------------------------------------------
+// Set a clock tree node for clock gate logic
+//-----------------------------------------------------------------------------------
+logic cclk_gate_cts;
+ctech_mux2x1   u_cclk_gate_cts  (.A0(core_clk_int), .A1(1'b0), .S(1'b0), .X(cclk_gate_cts));
+
+
 //----------------------------------------
 // Reset Sync
 //----------------------------------------
@@ -65,7 +72,7 @@ logic rst_ssn;
 
 ycr_reset_sync  u_rst_sync (
 	      .scan_mode  (1'b0               ),
-          .dclk       (cpu_clk_intf       ), // Destination clock domain
+          .dclk       (cclk_gate_cts      ), // Destination clock domain
 	      .arst_n     (rst_n              ), // active low async reset
           .srst_n     (rst_ssn            )
           );
@@ -73,7 +80,7 @@ ycr_reset_sync  u_rst_sync (
 
 ctech_dsync_high  #(.WB(1)) u_timer_irq(
               .in_data    ( timer_irq        ),
-              .out_clk    ( cpu_clk_intf     ),
+              .out_clk    ( cclk_gate_cts    ),
               .out_rst_n  ( rst_ssn          ),
               .out_data   ( timer_irq_ss     )
           );
@@ -82,14 +89,14 @@ wire ext_irq = |(core_irq_lines_i);
 
 ctech_dsync_high  #(.WB(1)) u_ext_irq(
               .in_data    ( ext_irq        ),
-              .out_clk    ( cpu_clk_intf   ),
+              .out_clk    ( cclk_gate_cts  ),
               .out_rst_n  ( rst_ssn        ),
               .out_data   ( ext_irq_ss     )
           );
 
 ctech_dsync_high  #(.WB(1)) u_soft_irq(
               .in_data    ( core_irq_soft_i),
-              .out_clk    ( cpu_clk_intf   ),
+              .out_clk    ( cclk_gate_cts  ),
               .out_rst_n  ( rst_ssn        ),
               .out_data   ( soft_irq_ss    )
           );
@@ -100,7 +107,7 @@ ctech_dsync_high  #(.WB(1)) u_soft_irq(
 //----------------------------
 ycr_clk_gate1  u_aes_s0(
                         .reset_n               (rst_ssn             ),
-                        .clk_in                (core_clk_int        ),
+                        .clk_in                (cclk_gate_cts       ),
                         .cfg_mode              (riscv_clk_cfg[1:0]  ),
                         .dst_idle              (aes_idle            ), // 1 - indicate destination is ideal
                         .src_req               (aes_req             ), // 1 - Source Request
@@ -115,7 +122,7 @@ ycr_clk_gate1  u_aes_s0(
 //----------------------------
 ycr_clk_gate1  u_fpu_s0(
                         .reset_n               (rst_ssn             ),
-                        .clk_in                (core_clk_int        ),
+                        .clk_in                (cclk_gate_cts       ),
                         .cfg_mode              (riscv_clk_cfg[3:2]  ),
                         .dst_idle              (fpu_idle            ), // 1 - indicate destination is ideal
                         .src_req               (fpu_req             ), // 1 - Source Request
@@ -129,14 +136,15 @@ ycr_clk_gate1  u_fpu_s0(
 //----------------------------
 ycr_clk_gate2  u_core_s0(
                         .reset_n               (rst_ssn             ),
-                        .clk_in                (core_clk_int        ),
+                        .clk_in                (cclk_gate_cts       ),
                         .cfg_mode              (riscv_clk_cfg[6:4]  ),
-                        .dst_idle              (core0_idle          ), // 1 - indicate destination is ideal
+                        .dst_idle              (riscv_sleep[0]      ), // 1 - indicate destination is ideal
                         .irq1                  (timer_irq_ss        ), // 1 - Timer Interrupt
                         .irq2                  (ext_irq_ss          ), // 1 - Source Request
                         .irq3                  (soft_irq_ss         ), // 1 - Source Request
 
-                        .clk_enb               (core0_idle_Ack      ), // clock enable indication
+                        .wakeup                (riscv_wakeup[0]     ), // wakeup indication
+                        .clk_enb               (                    ), // clock enable indication
                         .clk_out               (core0_clk           )  // clock output
      
        );
@@ -146,18 +154,21 @@ ycr_clk_gate2  u_core_s0(
 //----------------------------
 ycr_clk_gate2  u_core_s1(
                         .reset_n               (rst_ssn             ),
-                        .clk_in                (core_clk_int        ),
-                        .cfg_mode              (riscv_clk_cfg[10:8]  ),
-                        .dst_idle              (core1_idle          ), // 1 - indicate destination is ideal
+                        .clk_in                (cclk_gate_cts       ),
+                        .cfg_mode              (riscv_clk_cfg[10:8] ),
+                        .dst_idle              (riscv_sleep[1]      ), // 1 - indicate destination is ideal
                         .irq1                  (timer_irq_ss        ), // 1 - Timer Interrupt
                         .irq2                  (ext_irq_ss          ), // 1 - Source Request
                         .irq3                  (soft_irq_ss         ), // 1 - Source Request
 
-                        .clk_enb               (core1_idle_ack      ), // clock enable indication
+                        .wakeup                (riscv_wakeup[1]     ), // wakeup indication
+                        .clk_enb               (                    ), // clock enable indication
                         .clk_out               (core1_clk           )  // clock output
      
        );
 
+
+assign riscv_wakeup[7:2] = 'h0;
 
 
 endmodule

@@ -80,6 +80,8 @@ module ycr_core_top (
 
     input   logic [1:0]                             core_uid,        // Unique Core Id 
 
+    input   logic                                   core_sleep, // force core sleep
+
     // IRQ
 `ifdef YCR_IPIC_EN
     input   logic [YCR_IRQ_LINES_NUM-1:0]          core_irq_lines_i,         // External interrupt request lines
@@ -469,6 +471,7 @@ ycr_pipe_top i_pipe_top (
     .clkctl2pipe_clk_dbgc_i         (clk_dbgc               ),
     .clkctl2pipe_clk_en_i           (clk_pipe_en            ),
 `endif // YCR_CLKCTRL_EN
+    .core_sleep                     (core_sleep             ),
 
     // Instruction memory interface
     .pipe2imem_req_o                (core2imem_req_int      ),
