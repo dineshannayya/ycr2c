@@ -105,6 +105,8 @@
 ////            all cpu clock is branch are routed through iconnect       ////
 ////     2.8:  May 1, 2023, Dinesh A                                      ////
 ////           cpu clock gating feature added                             ////
+////     2.9:  June 1, 2023, Dinesh A                                     ////
+////            Bug fix in Tap reset connectivity                         ////
 ////                                                                      ////
 ////                                                                      ////
 //////////////////////////////////////////////////////////////////////////////

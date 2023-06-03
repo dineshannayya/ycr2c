@@ -384,6 +384,13 @@ ycr_data_sync_cell #(
     .data_out            (core_rst_n_status_sync)
 );
 
+
+assign core_rst_status      = ~core_rst_n_status_sync;
+assign core_rdc_qlfy_o      = core_rst_n_qlfy;
+
+`endif // YCR_DBG_EN
+assign core_rst_n_o         = core_rst_n;
+
 `ifdef YCR_DBG_EN
 // TAPC Reset
 ycr_reset_and2_cell i_tapc_rstn_and2_cell (
@@ -393,13 +400,6 @@ ycr_reset_and2_cell i_tapc_rstn_and2_cell (
     .rst_n_out      (tapc_trst_n     )
 );
 `endif // YCR_DBG_EN
-
-assign core_rst_status      = ~core_rst_n_status_sync;
-assign core_rdc_qlfy_o      = core_rst_n_qlfy;
-
-`endif // YCR_DBG_EN
-assign core_rst_n_o         = core_rst_n;
-
 //-------------------------------------------------------------------------------
 // Retiming block to break the Timing Path
 //-------------------------------------------------------------------------------

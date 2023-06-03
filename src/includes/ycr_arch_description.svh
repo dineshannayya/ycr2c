@@ -49,8 +49,8 @@
 //------------------------------------------------------------------------------
 
 // YCR1 core identifiers
-`define YCR_MIMPID             32'h23030400 // <YY[7:0]:MON[7:0]:DAY[7:0]:INTRA DAY[7:0]>
-`define YCR_MVENDORID          32'h00000000
+`define YCR_MIMPID             32'h23060100 // <YY[7:0]:MON[7:0]:DAY[7:0]:INTRA DAY[7:0]>
+`define YCR_MVENDORID          32'h52444430 // RDD0 - RiscDuino D0
 `define YCR_NUMCORES           32'h00000002
 
 // Width of main registers and buses
