@@ -191,7 +191,7 @@ endif
 TARGETS += isr_sample
 
 # Comment this target if you don't want to run the coremark
-TARGETS += coremark
+ARGETS += coremark
 
 # Comment this target if you don't want to run the dhrystone
 TARGETS += dhrystone21

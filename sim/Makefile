@@ -9,6 +9,7 @@ rtl_tb_files ?= ahb_tb.files
 rtl_inc_dir ?= $(root_dir)/src/includes
 cache_inc_dir ?= $(root_dir)/src/cache/src/core
 rtl_dir ?= $(root_dir)/src/
+gate_dir ?= $(root_dir)/verilog/
 synth_dir ?= $(root_dir)/synth/
 rtl_inc_tb_dir ?= $(root_dir)/tb/
 top_module ?= ycr_top_tb_ahb
@@ -43,20 +44,37 @@ endif
 default: build_modelsim
 
 build_iverilog: 
+ifeq ($(SIM),RTL)
+   ifeq ($(DUMP),OFF)
 	cd $(bld_dir); \
-	iverilog -g2012 \
-	-D FUNCTIONAL \
-	-D $(SIM) \
-	-I $(PDK_PATH) \
-	-I $(rtl_dir) \
-	-I $(synth_dir) \
-	-I $(rtl_inc_dir) \
-	-I $(cache_inc_dir) \
-	-I $(rtl_inc_tb_dir) \
-	-D $(SIM_CFG_DEF) \
-	$(SIM_BUILD_OPTS) \
-	$(ycr_tb_top) \
-	-o $(top_module).vvp
+	iverilog -g2012 -D FUNCTIONAL -D $(SIM) -I $(PDK_PATH) \
+	-I $(rtl_dir) -I $(gate_dir) -I $(synth_dir) \
+	-I $(rtl_inc_dir) -I $(cache_inc_dir) -I $(rtl_inc_tb_dir) \
+	-D $(SIM_CFG_DEF) $(SIM_BUILD_OPTS) $(ycr_tb_top) -o $(top_module).vvp
+   else 
+	cd $(bld_dir); \
+	iverilog -g2012 -DWFDUMP -D FUNCTIONAL -D $(SIM) -I $(PDK_PATH) \
+	-I $(rtl_dir) -I $(gate_dir) -I $(synth_dir) \
+	-I $(rtl_inc_dir) -I $(cache_inc_dir) -I $(rtl_inc_tb_dir) \
+	-D $(SIM_CFG_DEF) $(SIM_BUILD_OPTS) $(ycr_tb_top) -o $(top_module).vvp
+   endif
+else 
+   ifeq ($(SIM),GL)
+	cd $(bld_dir); \
+	iverilog -g2012 -D FUNCTIONAL -DUSE_POWER_PINS -D $(SIM) -I $(PDK_PATH) \
+	-I $(rtl_dir) -I $(gate_dir) -I $(synth_dir) \
+	-I $(rtl_inc_dir) -I $(cache_inc_dir) -I $(rtl_inc_tb_dir) \
+	-D $(SIM_CFG_DEF) $(SIM_BUILD_OPTS) $(ycr_tb_top) -o $(top_module).vvp
+   else 
+	cd $(bld_dir); \
+	iverilog -g2012 -DWFDUMP -DUSE_POWER_PINS -D FUNCTIONAL -D $(SIM) -I $(PDK_PATH) \
+	-I $(rtl_dir) -I $(gate_dir) -I $(synth_dir) \
+	-I $(rtl_inc_dir) -I $(cache_inc_dir) -I $(rtl_inc_tb_dir) \
+	-D $(SIM_CFG_DEF) $(SIM_BUILD_OPTS) $(ycr_tb_top) -o $(top_module).vvp
+   endif
+endif
+
+
 
 build_iverilog_wf: 
 	cd $(bld_dir); \
@@ -66,6 +84,7 @@ build_iverilog_wf:
 	-D $(SIM) \
 	-I $(PDK_PATH) \
 	-I $(rtl_dir) \
+	-I $(gate_dir) \
 	-I $(synth_dir) \
 	-I $(rtl_inc_dir) \
 	-I $(cache_inc_dir) \
