@@ -33,8 +33,10 @@
 ////     - Dinesh Annayya, dinesha@opencores.org                          ////
 ////                                                                      ////
 ////  CPU Memory Map:                                                     ////
-////            0x0000_0000 to 0x07FF_FFFF (128MB) - ICACHE               ////
+////            0x0000_0000 to 0x03FF_FFFF (64MB)  - ICACHE               ////
+////            0x0400_0000 to 0x0FFF_FFFF (64MB)  - IMEM (UNCACHE)       ////
 ////            0x0800_0000 to 0x0BFF_FFFF (64MB)  - DCACHE               ////
+////            0x0C00_0000 to 0x0C47_FFFF (4.5MB) - DMEM(UCACHE)         ////
 ////            0x0C48_0000 to 0x0C48_FFFF (64K)   - TCM SRAM             ////
 ////            0x0C49_0000 to 0x0C49_000F (16)    - TIMER                ////
 ////                                                                      ////
@@ -107,6 +109,8 @@
 ////           cpu clock gating feature added                             ////
 ////     2.9:  June 1, 2023, Dinesh A                                     ////
 ////            Bug fix in Tap reset connectivity                         ////
+////     2.10: 18 Sept 2023, Dinesh A                                     ////
+////            uncahce memory range are created for imem and dmem space  ////
 ////                                                                      ////
 ////                                                                      ////
 //////////////////////////////////////////////////////////////////////////////

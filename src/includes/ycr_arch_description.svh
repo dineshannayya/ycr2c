@@ -228,11 +228,13 @@ parameter int unsigned YCR_TDU_TRIG_NUM = 2;   // number of hardware triggers
 parameter bit [`YCR_XLEN-1:0]          YCR_ARCH_RST_VECTOR        = 'h200;            // Reset vector value (start address after reset)
 parameter bit [`YCR_XLEN-1:0]          YCR_ARCH_MTVEC_BASE        = 'h1C0;            // MTVEC.base field reset value, or constant value for MTVEC.base bits that are hardwired
 
-// icache address range 0x0000_0000 to 0x07FF_FFFF - 128MB
-parameter bit [`YCR_DMEM_AWIDTH-1:0]   YCR_ICACHE_ADDR_MASK       = 'hF8000000;       // ICACHE mask and size; size in bytes is two's complement of the mask value
+// icache   address range 0x0000_0000 to 0x03FF_FFFF - 64MB
+// uncache imem  address range 0x0400_0000 to 0x07FF_FFFF - 64MB
+parameter bit [`YCR_DMEM_AWIDTH-1:0]   YCR_ICACHE_ADDR_MASK       = 'hFC000000;       // ICACHE mask and size; size in bytes is two's complement of the mask value
 parameter bit [`YCR_DMEM_AWIDTH-1:0]   YCR_ICACHE_ADDR_PATTERN    = 'h00000000;       // ICACHE address match pattern
 
 // dcache address range 0x0800_0000 to 0x0BFF_FFFF - 64MB
+// uncache dmem address range 0x0C00_0000 to 0x0C47_FFFF - 4.5MB (4718592)
 parameter bit [`YCR_DMEM_AWIDTH-1:0]   YCR_DCACHE_ADDR_MASK       = 'hFC000000;       // DCACHE mask and size; size in bytes is two's complement of the mask value
 parameter bit [`YCR_DMEM_AWIDTH-1:0]   YCR_DCACHE_ADDR_PATTERN    = 'h08000000;       // DCACHE address match pattern
 
