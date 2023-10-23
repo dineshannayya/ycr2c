@@ -71,7 +71,12 @@ module ycr2_iconnect (
     input   logic                         core_irq_soft_i,         // Software generated interrupt request
 
     input   logic [1:0]                  core_debug_sel,
+`ifdef YCR_SERIAL_DEBUG
+    output  logic                        serial_riscv_debug_sync,
+    output  logic                        serial_riscv_debug_data,
+`else
     output  logic [63:0]                 riscv_debug,
+`endif
 
     output   logic                       cfg_dcache_force_flush,
     input   logic [1:0]                  cfg_sram_lphase,
@@ -322,6 +327,25 @@ logic   [31:0]                    sram1_din0_int       ; // Write Data
 // SRAM-0 PORT-1
 logic                             sram1_csb1_int       ; // CS#
 logic  [8:0]                      sram1_addr1_int      ; // Address
+
+
+
+//---------------------------------------
+// change debug from from parallel to serial format
+
+`ifdef YCR_SERIAL_DEBUG
+logic [63:0]                 riscv_debug;
+
+ycr_serial_debug  #(.DEBUG_WD(64)) u_debug(
+
+         .reset_n             (cpu_intf_rst_n),
+         .clk                 (core_clk),
+         .debug_bus           (riscv_debug),
+         .serial_debug_data   (serial_riscv_debug_data),
+         .serial_debug_sync   (serial_riscv_debug_sync) 
+       );
+
+`endif
 
 //---------------------------------------------------------------------------------
 // Providing cpu clock feed through iconnect for better physical routing

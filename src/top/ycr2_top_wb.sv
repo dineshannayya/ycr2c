@@ -157,7 +157,13 @@ module ycr2_top_wb                      (
     // input   logic                          test_mode,              // Test mode - unused
     // input   logic                          test_rst_n,             // Test mode's reset - unused
     input   logic                             rtc_clk,                // Real-time clock
+`ifdef YCR_SERIAL_DEBUG
+    output  logic                             serial_riscv_debug_sync,
+    output  logic                             serial_riscv_debug_data,
+`else
     output  logic [63:0]                      riscv_debug,
+`endif
+
 `ifdef YCR_DBG_EN
     output  logic                             sys_rst_n_o,            // External System Reset output
                                                                       //   (for the processor cluster's components or
@@ -432,6 +438,7 @@ logic                                              core_clk_core0_skew;
 //------------------------------------------------------------------------------
 logic                                              core0_tdo;
 
+
 //-------------------------------------------------------------------------------
 // YCR Intf instance
 //-------------------------------------------------------------------------------
@@ -454,7 +461,13 @@ ycr2_iconnect u_connect (
           .cpu_intf_rst_n               (cpu_intf_rst_n               ), // CPU reset
 
           .core_debug_sel               (core_debug_sel               ),
+
+`ifdef YCR_SERIAL_DEBUG
+          .serial_riscv_debug_sync      (serial_riscv_debug_sync      ),
+          .serial_riscv_debug_data      (serial_riscv_debug_data      ),
+`else
 	      .riscv_debug                  (riscv_debug                  ),
+`endif
           .cfg_sram_lphase              (cfg_sram_lphase[3:2]         ),
 
           // Interrupt buffering      
