@@ -191,7 +191,7 @@ module ycr2_top_wb                      (
     output  logic                        tdo_en,
 `endif // YCR_DBG_EN
 
-`ifndef YCR_TCM_MEM
+`ifdef YCR_TCM_MEM_2KB
     // SRAM-0 PORT-0
     output  logic                        sram0_clk0,
     output  logic                        sram0_csb0,
@@ -206,6 +206,57 @@ module ycr2_top_wb                      (
     output  logic                        sram0_csb1,
     output  logic  [8:0]                 sram0_addr1,
     input   logic  [31:0]                sram0_dout1,
+
+`endif
+
+`ifdef YCR_TCM_MEM_8KB
+    // SRAM-1 PORT-0
+    output  logic                        sram1_clk0,
+    output  logic                        sram1_csb0,
+    output  logic                        sram1_web0,
+    output  logic   [8:0]                sram1_addr0,
+    output  logic   [3:0]                sram1_wmask0,
+    output  logic   [31:0]               sram1_din0,
+    input   logic   [31:0]               sram1_dout0,
+
+    // SRAM-1 PORT-1
+    output  logic                        sram1_clk1,
+    output  logic                        sram1_csb1,
+    output  logic  [8:0]                 sram1_addr1,
+    input   logic  [31:0]                sram1_dout1,
+
+    // SRAM-2 PORT-0
+    output  logic                        sram2_clk0,
+    output  logic                        sram2_csb0,
+    output  logic                        sram2_web0,
+    output  logic   [8:0]                sram2_addr0,
+    output  logic   [3:0]                sram2_wmask0,
+    output  logic   [31:0]               sram2_din0,
+    input   logic   [31:0]               sram2_dout0,
+
+    // SRAM-2 PORT-1
+    output  logic                        sram2_clk1,
+    output  logic                        sram2_csb1,
+    output  logic  [8:0]                 sram2_addr1,
+    input   logic  [31:0]                sram2_dout1,
+
+
+    // SRAM-3 PORT-0
+    output  logic                        sram3_clk0,
+    output  logic                        sram3_csb0,
+    output  logic                        sram3_web0,
+    output  logic   [8:0]                sram3_addr0,
+    output  logic   [3:0]                sram3_wmask0,
+    output  logic   [31:0]               sram3_din0,
+    input   logic   [31:0]               sram3_dout0,
+
+    // SRAM-3 PORT-1
+    output  logic                        sram3_clk1,
+    output  logic                        sram3_csb1,
+    output  logic  [8:0]                 sram3_addr1,
+    input   logic  [31:0]                sram3_dout1,
+
+
 
 `endif
 
@@ -468,7 +519,7 @@ ycr2_iconnect u_connect (
 `else
 	      .riscv_debug                  (riscv_debug                  ),
 `endif
-          .cfg_sram_lphase              (cfg_sram_lphase[3:2]         ),
+          .cfg_sram_lphase              ({cfg_sram_lphase[3:2],cfg_sram_lphase[3:2]}         ),
 
           // Interrupt buffering      
           .core_irq_lines_i             (irq_lines                    ),
@@ -572,7 +623,7 @@ ycr2_iconnect u_connect (
           .core_dcache_rdata             (core_dcache_rdata             ),
           .core_dcache_resp              (core_dcache_resp              ),
         `endif // YCR_ICACHE_EN
-`ifndef YCR_TCM_MEM
+`ifdef YCR_TCM_MEM_2KB
     // SRAM-0 PORT-0
           .sram0_clk0                   (sram0_clk0                     ),
           .sram0_csb0                   (sram0_csb0                     ),
@@ -589,6 +640,55 @@ ycr2_iconnect u_connect (
           .sram0_dout1                  (sram0_dout1                    ),
  
 `endif
+
+`ifdef YCR_TCM_MEM_8KB
+    // SRAM-1 PORT-0
+          .sram1_clk0                   (sram1_clk0                     ),
+          .sram1_csb0                   (sram1_csb0                     ),
+          .sram1_web0                   (sram1_web0                     ),
+          .sram1_addr0                  (sram1_addr0                    ),
+          .sram1_wmask0                 (sram1_wmask0                   ),
+          .sram1_din0                   (sram1_din0                     ),
+          .sram1_dout0                  (sram1_dout0                    ),
+    
+    // SRAM-1 PORT-1
+          .sram1_clk1                   (sram1_clk1                     ),
+          .sram1_csb1                   (sram1_csb1                     ),
+          .sram1_addr1                  (sram1_addr1                    ),
+          .sram1_dout1                  (sram1_dout1                    ),
+ 
+    // SRAM-2 PORT-0
+          .sram2_clk0                   (sram2_clk0                     ),
+          .sram2_csb0                   (sram2_csb0                     ),
+          .sram2_web0                   (sram2_web0                     ),
+          .sram2_addr0                  (sram2_addr0                    ),
+          .sram2_wmask0                 (sram2_wmask0                   ),
+          .sram2_din0                   (sram2_din0                     ),
+          .sram2_dout0                  (sram2_dout0                    ),
+    
+    // SRAM-2 PORT-1
+          .sram2_clk1                   (sram2_clk1                     ),
+          .sram2_csb1                   (sram2_csb1                     ),
+          .sram2_addr1                  (sram2_addr1                    ),
+          .sram2_dout1                  (sram2_dout1                    ),
+
+    // SRAM-3 PORT-0
+          .sram3_clk0                   (sram3_clk0                     ),
+          .sram3_csb0                   (sram3_csb0                     ),
+          .sram3_web0                   (sram3_web0                     ),
+          .sram3_addr0                  (sram3_addr0                    ),
+          .sram3_wmask0                 (sram3_wmask0                   ),
+          .sram3_din0                   (sram3_din0                     ),
+          .sram3_dout0                  (sram3_dout0                    ),
+    
+    // SRAM-3 PORT-1
+          .sram3_clk1                   (sram3_clk1                     ),
+          .sram3_csb1                   (sram3_csb1                     ),
+          .sram3_addr1                  (sram3_addr1                    ),
+          .sram3_dout1                  (sram3_dout1                    ),
+
+`endif
+
           .cpu_clk_aes                  (cpu_clk_aes                    ),
           .aes_dmem_req_ack             (aes_dmem_req_ack               ),
           .aes_dmem_req                 (aes_dmem_req                   ),

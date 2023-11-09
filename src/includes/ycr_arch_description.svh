@@ -118,6 +118,8 @@
 
 `define YCR_ICACHE_EN   // Enable ICACHE
 `define YCR_DCACHE_EN   // Enable ICACHE
+`define YCR_TCM_MEM_2KB   // Enable 2KB TCM
+//`define YCR_TCM_MEM_8KB   // Enable 8KB TCM
 
 //------------------------------------------------------------------------------
 // READ-ONLY: settings for recommended configurations

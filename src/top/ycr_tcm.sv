@@ -88,6 +88,35 @@ module ycr_tcm
     output  logic  [8:0]                   sram1_addr1,
     input   logic  [31:0]                  sram1_dout1,
 
+    // SRAM2 PORT-0
+    output  logic                          sram2_clk0,
+    output  logic                          sram2_csb0,
+    output  logic                          sram2_web0,
+    output  logic   [8:0]                  sram2_addr0,
+    output  logic   [3:0]                  sram2_wmask0,
+    output  logic   [31:0]                 sram2_din0,
+    input   logic   [31:0]                 sram2_dout0,
+
+    // SRAM-1 PORT-1
+    output  logic                          sram2_clk1,
+    output  logic                          sram2_csb1,
+    output  logic  [8:0]                   sram2_addr1,
+    input   logic  [31:0]                  sram2_dout1,
+
+    // SRAM3 PORT-0
+    output  logic                          sram3_clk0,
+    output  logic                          sram3_csb0,
+    output  logic                          sram3_web0,
+    output  logic   [8:0]                  sram3_addr0,
+    output  logic   [3:0]                  sram3_wmask0,
+    output  logic   [31:0]                 sram3_din0,
+    input   logic   [31:0]                 sram3_dout0,
+
+    // SRAM-1 PORT-1
+    output  logic                          sram3_clk1,
+    output  logic                          sram3_csb1,
+    output  logic  [8:0]                   sram3_addr1,
+    input   logic  [31:0]                  sram3_dout1,
 `endif
 
     // Core instruction interface
@@ -184,42 +213,55 @@ end
 //-------------------------------------------------------------------------------
 `ifndef YCR_TCM_MEM
 // IMEM SRAM Read Path Selection - To break timing loop
-logic imem_sram_sel;
+logic [1:0] imem_sram_sel;
 always_ff @(posedge clk, negedge rst_n) begin
     if (~rst_n) begin
         imem_sram_sel <= '0;
     end else begin
-        imem_sram_sel <= imem_addr[11];
+        imem_sram_sel <= imem_addr[12:11];
     end
 end
 
 // DMEM SRAM Read Path Selection - To break timing loop
-logic dmem_sram_sel;
+logic [1:0] dmem_sram_sel;
 always_ff @(posedge clk, negedge rst_n) begin
     if (~rst_n) begin
         dmem_sram_sel        <= '0;
         dmem_rdata_shift_reg <= '0;
     end else begin
-        dmem_sram_sel        <= dmem_addr[11];
+        dmem_sram_sel        <= dmem_addr[12:11];
         dmem_rdata_shift_reg <= dmem_addr[1:0];
     end
 end
 // connect the TCM memory to SRAM-0
 assign sram0_clk1 = clk_src;
-assign sram0_csb1 =!(imem_req & dmem_req_ack & imem_addr[11] == 1'b0);
+assign sram0_csb1 =!(imem_req & dmem_req_ack & imem_addr[12:11] == 2'b0);
 assign sram0_addr1 = imem_addr[10:2];
 
 // connect the TCM memory to SRAM-1
 assign sram1_clk1 = clk_src;
-assign sram1_csb1 =!(imem_req & dmem_req_ack & imem_addr[11] == 1'b1);
+assign sram1_csb1 =!(imem_req & dmem_req_ack & imem_addr[12:11] == 2'b01);
 assign sram1_addr1 = imem_addr[10:2];
 
+// connect the TCM memory to SRAM-2
+assign sram2_clk1 = clk_src;
+assign sram2_csb1 =!(imem_req & dmem_req_ack & imem_addr[12:11] == 2'b10);
+assign sram2_addr1 = imem_addr[10:2];
+
+// connect the TCM memory to SRAM-3
+assign sram3_clk1 = clk_src;
+assign sram3_csb1 =!(imem_req & dmem_req_ack & imem_addr[12:11] == 2'b11);
+assign sram3_addr1 = imem_addr[10:2];
+
 // IMEM Read Data Selection Based on Address bit[11]
-assign imem_rdata_int  = (imem_sram_sel == 1'b0) ?  sram0_dout1: sram1_dout1;
+assign imem_rdata_int  = (imem_sram_sel == 2'b00) ?  sram0_dout1:
+                         (imem_sram_sel == 2'b01) ?  sram1_dout1: 
+                         (imem_sram_sel == 2'b10) ?  sram2_dout1: 
+                          sram3_dout1;
 
 // SRAM-0 Port 0 Control Generation
 assign sram0_clk0 = clk_src;
-assign sram0_csb0   = !(dmem_req & dmem_req_ack & (dmem_addr[11] == 1'b0) & ((dmem_cmd == YCR_MEM_CMD_RD) | (dmem_cmd == YCR_MEM_CMD_WR)));
+assign sram0_csb0   = !(dmem_req & dmem_req_ack & (dmem_addr[12:11] == 2'b00) & ((dmem_cmd == YCR_MEM_CMD_RD) | (dmem_cmd == YCR_MEM_CMD_WR)));
 assign sram0_web0   = !(dmem_req & dmem_req_ack & (dmem_cmd == YCR_MEM_CMD_WR));
 assign sram0_addr0  = dmem_addr[10:2];
 assign sram0_wmask0 =  dmem_byteen;
@@ -227,15 +269,34 @@ assign sram0_din0   =  dmem_writedata;
 
 // SRAM-1 Port 0 Control Generation
 assign sram1_clk0 = clk_src;
-assign sram1_csb0   = !(dmem_req & dmem_req_ack & (dmem_addr[11] == 1'b1) & ((dmem_cmd == YCR_MEM_CMD_RD) | (dmem_cmd == YCR_MEM_CMD_WR)));
+assign sram1_csb0   = !(dmem_req & dmem_req_ack & (dmem_addr[12:11] == 2'b01) & ((dmem_cmd == YCR_MEM_CMD_RD) | (dmem_cmd == YCR_MEM_CMD_WR)));
 assign sram1_web0   = !(dmem_req & dmem_req_ack & (dmem_cmd == YCR_MEM_CMD_WR));
 assign sram1_addr0  = dmem_addr[10:2];
 assign sram1_wmask0 =  dmem_byteen;
 assign sram1_din0   =  dmem_writedata;
 
+// SRAM-2 Port 0 Control Generation
+assign sram2_clk0 = clk_src;
+assign sram2_csb0   = !(dmem_req & dmem_req_ack & (dmem_addr[12:11] == 2'b10) & ((dmem_cmd == YCR_MEM_CMD_RD) | (dmem_cmd == YCR_MEM_CMD_WR)));
+assign sram2_web0   = !(dmem_req & dmem_req_ack & (dmem_cmd == YCR_MEM_CMD_WR));
+assign sram2_addr0  = dmem_addr[10:2];
+assign sram2_wmask0 =  dmem_byteen;
+assign sram2_din0   =  dmem_writedata;
+
+// SRAM-3 Port 0 Control Generation
+assign sram3_clk0 = clk_src;
+assign sram3_csb0   = !(dmem_req & dmem_req_ack & (dmem_addr[12:11] == 2'b11) & ((dmem_cmd == YCR_MEM_CMD_RD) | (dmem_cmd == YCR_MEM_CMD_WR)));
+assign sram3_web0   = !(dmem_req & dmem_req_ack & (dmem_cmd == YCR_MEM_CMD_WR));
+assign sram3_addr0  = dmem_addr[10:2];
+assign sram3_wmask0 =  dmem_byteen;
+assign sram3_din0   =  dmem_writedata;
+
 
 // DMEM Read Data Selection Based on Address bit[11]
-assign dmem_rdata_local = (dmem_sram_sel == 1'b0) ? sram0_dout0: sram1_dout0;
+assign dmem_rdata_local = (dmem_sram_sel == 2'b00) ? sram0_dout0:
+                          (dmem_sram_sel == 2'b01) ? sram1_dout0: 
+                          (dmem_sram_sel == 2'b10) ? sram2_dout0: 
+                           sram3_dout0;
 
 `endif
 

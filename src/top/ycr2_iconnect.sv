@@ -79,7 +79,7 @@ module ycr2_iconnect (
 `endif
 
     output   logic                       cfg_dcache_force_flush,
-    input   logic [1:0]                  cfg_sram_lphase,
+    input   logic [3:0]                  cfg_sram_lphase,
     input   logic                        cfg_bypass_icache,  // Bypass ichache
     input   logic                        cfg_bypass_dcache,  // bypass dchance
 
@@ -179,6 +179,72 @@ module ycr2_iconnect (
     input    logic [`YCR_DMEM_DWIDTH-1:0]   core_dmem_rdata           ,
     input    logic [1:0]                    core_dmem_resp            ,
 
+
+`ifdef YCR_TCM_MEM_2KB
+    // SRAM-0 PORT-0
+    output  logic                           sram0_clk0                ,
+    output  logic                           sram0_csb0                ,
+    output  logic                           sram0_web0                ,
+    output  logic   [8:0]                   sram0_addr0               ,
+    output  logic   [3:0]                   sram0_wmask0              ,
+    output  logic   [31:0]                  sram0_din0                ,
+    input   logic   [31:0]                  sram0_dout0               ,
+
+    // SRAM-0 PORT-1
+    output  logic                           sram0_clk1                ,
+    output  logic                           sram0_csb1                ,
+    output  logic  [8:0]                    sram0_addr1               ,
+    input   logic  [31:0]                   sram0_dout1               ,
+
+`endif
+
+`ifdef YCR_TCM_MEM_8KB
+    // SRAM-1 PORT-0
+    output  logic                           sram1_clk0                ,
+    output  logic                           sram1_csb0                ,
+    output  logic                           sram1_web0                ,
+    output  logic   [8:0]                   sram1_addr0               ,
+    output  logic   [3:0]                   sram1_wmask0              ,
+    output  logic   [31:0]                  sram1_din0                ,
+    input   logic   [31:0]                  sram1_dout0               ,
+
+    // SRAM-1 PORT-1
+    output  logic                           sram1_clk1                ,
+    output  logic                           sram1_csb1                ,
+    output  logic  [8:0]                    sram1_addr1               ,
+    input   logic  [31:0]                   sram1_dout1               ,
+
+    // SRAM-2 PORT-0
+    output  logic                           sram2_clk0                ,
+    output  logic                           sram2_csb0                ,
+    output  logic                           sram2_web0                ,
+    output  logic   [8:0]                   sram2_addr0               ,
+    output  logic   [3:0]                   sram2_wmask0              ,
+    output  logic   [31:0]                  sram2_din0                ,
+    input   logic   [31:0]                  sram2_dout0               ,
+
+    // SRAM-1 PORT-1
+    output  logic                           sram2_clk1                ,
+    output  logic                           sram2_csb1                ,
+    output  logic  [8:0]                    sram2_addr1               ,
+    input   logic  [31:0]                   sram2_dout1               ,
+
+    // SRAM-3 PORT-0
+    output  logic                           sram3_clk0                ,
+    output  logic                           sram3_csb0                ,
+    output  logic                           sram3_web0                ,
+    output  logic   [8:0]                   sram3_addr0               ,
+    output  logic   [3:0]                   sram3_wmask0              ,
+    output  logic   [31:0]                  sram3_din0                ,
+    input   logic   [31:0]                  sram3_dout0               ,
+
+    // SRAM-3 PORT-1
+    output  logic                           sram3_clk1                ,
+    output  logic                           sram3_csb1                ,
+    output  logic  [8:0]                    sram3_addr1               ,
+    input   logic  [31:0]                   sram3_dout1               ,
+`endif
+
     // AES DMEM I/F
     output   logic                          cpu_clk_aes               ,
     input    logic                          aes_dmem_req_ack          ,
@@ -201,25 +267,8 @@ module ycr2_iconnect (
     output   logic [`YCR_DMEM_DWIDTH-1:0]   fpu_dmem_wdata            ,
     input    logic [`YCR_DMEM_DWIDTH-1:0]   fpu_dmem_rdata            ,
     input    logic [1:0]                    fpu_dmem_resp             ,
-    input    logic                          fpu_idle                  ,
+    input    logic                          fpu_idle                  
 
-`ifndef YCR_TCM_MEM
-    // SRAM-0 PORT-0
-    output  logic                           sram0_clk0                ,
-    output  logic                           sram0_csb0                ,
-    output  logic                           sram0_web0                ,
-    output  logic   [8:0]                   sram0_addr0               ,
-    output  logic   [3:0]                   sram0_wmask0              ,
-    output  logic   [31:0]                  sram0_din0                ,
-    input   logic   [31:0]                  sram0_dout0               ,
-
-    // SRAM-0 PORT-1
-    output  logic                           sram0_clk1                ,
-    output  logic                           sram0_csb1                ,
-    output  logic  [8:0]                    sram0_addr1               ,
-    input   logic  [31:0]                   sram0_dout1
-
-`endif
 
 
 
@@ -274,7 +323,7 @@ logic [`YCR_DMEM_DWIDTH-1:0]                       timer_dmem_wdata;
 logic [`YCR_DMEM_DWIDTH-1:0]                       timer_dmem_rdata;
 logic [1:0]                                        timer_dmem_resp;
 
-`ifndef YCR_TCM_MEM
+`ifndef YCR_TCM_MEM_8KB
     // SRAM-1 PORT-0
     logic                                          sram1_clk0;
     logic                                          sram1_csb0;
@@ -289,6 +338,36 @@ logic [1:0]                                        timer_dmem_resp;
     logic                                          sram1_csb1;
     logic  [8:0]                                   sram1_addr1;
     logic  [31:0]                                  sram1_dout1;
+
+    // SRAM-2 PORT-0
+    logic                                          sram2_clk0;
+    logic                                          sram2_csb0;
+    logic                                          sram2_web0;
+    logic   [8:0]                                  sram2_addr0;
+    logic   [3:0]                                  sram2_wmask0;
+    logic   [31:0]                                 sram2_din0;
+    logic   [31:0]                                 sram2_dout0;
+
+    // SRAM-2 PORT-1
+    logic                                          sram2_clk1;
+    logic                                          sram2_csb1;
+    logic  [8:0]                                   sram2_addr1;
+    logic  [31:0]                                  sram2_dout1;
+
+    // SRAM-3 PORT-0
+    logic                                          sram3_clk0;
+    logic                                          sram3_csb0;
+    logic                                          sram3_web0;
+    logic   [8:0]                                  sram3_addr0;
+    logic   [3:0]                                  sram3_wmask0;
+    logic   [31:0]                                 sram3_din0;
+    logic   [31:0]                                 sram3_dout0;
+
+    // SRAM-3 PORT-1
+    logic                                          sram3_clk1;
+    logic                                          sram3_csb1;
+    logic  [8:0]                                   sram3_addr1;
+    logic  [31:0]                                  sram3_dout1;
 `endif
 
 logic [31:0]                                       riscv_glbl_cfg          ;   
@@ -328,7 +407,33 @@ logic   [31:0]                    sram1_din0_int       ; // Write Data
 logic                             sram1_csb1_int       ; // CS#
 logic  [8:0]                      sram1_addr1_int      ; // Address
 
+//-----------------------------------------------------------------------------------
+// Variable for sram mux for sram2
+// ---------------------------------------------------------------------------------
+// PORT-0
+logic                             sram2_csb0_int       ; // CS#
+logic                             sram2_web0_int       ; // WE#
+logic   [8:0]                     sram2_addr0_int      ; // Address
+logic   [3:0]                     sram2_wmask0_int     ; // WMASK#
+logic   [31:0]                    sram2_din0_int       ; // Write Data
+   
+// SRAM-0 PORT-1
+logic                             sram2_csb1_int       ; // CS#
+logic  [8:0]                      sram2_addr1_int      ; // Address
 
+//-----------------------------------------------------------------------------------
+// Variable for sram mux for sram3
+// ---------------------------------------------------------------------------------
+// PORT-0
+logic                             sram3_csb0_int       ; // CS#
+logic                             sram3_web0_int       ; // WE#
+logic   [8:0]                     sram3_addr0_int      ; // Address
+logic   [3:0]                     sram3_wmask0_int     ; // WMASK#
+logic   [31:0]                    sram3_din0_int       ; // Write Data
+   
+// SRAM-0 PORT-1
+logic                             sram3_csb1_int       ; // CS#
+logic  [8:0]                      sram3_addr1_int      ; // Address
 
 //---------------------------------------
 // change debug from from parallel to serial format
@@ -717,6 +822,36 @@ ycr_tcm #(
     .sram1_addr1     (sram1_addr1_int     ),
     .sram1_dout1     (sram1_dout1         ),
 
+   // SRAM-2 PORT-0
+    .sram2_clk0      (sram2_clk0          ),
+    .sram2_csb0      (sram2_csb0_int      ),
+    .sram2_web0      (sram2_web0_int      ),
+    .sram2_addr0     (sram2_addr0_int     ),
+    .sram2_wmask0    (sram2_wmask0_int    ),
+    .sram2_din0      (sram2_din0_int      ),
+    .sram2_dout0     (sram2_dout0         ),
+    
+    // SRAM-2 PORT-1
+    .sram2_clk1      (sram2_clk1          ),
+    .sram2_csb1      (sram2_csb1_int      ),
+    .sram2_addr1     (sram2_addr1_int     ),
+    .sram2_dout1     (sram2_dout1         ),
+
+   // SRAM-3 PORT-0
+    .sram3_clk0      (sram3_clk0          ),
+    .sram3_csb0      (sram3_csb0_int      ),
+    .sram3_web0      (sram3_web0_int      ),
+    .sram3_addr0     (sram3_addr0_int     ),
+    .sram3_wmask0    (sram3_wmask0_int    ),
+    .sram3_din0      (sram3_din0_int      ),
+    .sram3_dout0     (sram3_dout0         ),
+    
+    // SRAM-3 PORT-1
+    .sram3_clk1      (sram3_clk1          ),
+    .sram3_csb1      (sram3_csb1_int      ),
+    .sram3_addr1     (sram3_addr1_int     ),
+    .sram3_dout1     (sram3_dout1         ),
+
 `endif
 
 
@@ -798,6 +933,66 @@ ycr_sram_mux  u_sram1_smux (
    .mem_csb1_o           (sram1_csb1        ), // CS#
    .mem_addr1_o          (sram1_addr1       )  // Address
 );
+
+ycr_sram_mux  u_sram2_smux (
+   .rst_n                (cpu_intf_rst_n_sync    ),
+   .cfg_mem_lphase       (cfg_sram_lphase[2]     ), // 0 - Posedge (Default), 1 - Negedge
+   // SRAM Memory I/F, PORT-0
+   .mem_clk0_i           (sram2_clk0        ), // CLK
+   .mem_csb0_i           (sram2_csb0_int    ), // CS#
+   .mem_web0_i           (sram2_web0_int    ), // WE#
+   .mem_addr0_i          (sram2_addr0_int   ), // Address
+   .mem_wmask0_i         (sram2_wmask0_int  ), // WMASK#
+   .mem_din0_i           (sram2_din0_int    ), // Write Data
+   
+   // SRAM-0 PORT-1, 
+   .mem_clk1_i           (sram2_clk1        ), // CLK
+   .mem_csb1_i           (sram2_csb1_int    ), // CS#
+   .mem_addr1_i          (sram2_addr1_int   ), // Address
+
+   // SRAM Memory I/F, PORT-0
+   .mem_csb0_o           (sram2_csb0        ), // CS#
+   .mem_web0_o           (sram2_web0        ), // WE#
+   .mem_addr0_o          (sram2_addr0       ), // Address
+   .mem_wmask0_o         (sram2_wmask0      ), // WMASK#
+   .mem_din0_o           (sram2_din0        ), // Write Data
+   
+   // SRAM-0 PORT-1, 
+   .mem_csb1_o           (sram2_csb1        ), // CS#
+   .mem_addr1_o          (sram2_addr1       )  // Address
+);
+
+ycr_sram_mux  u_sram3_smux (
+   .rst_n                (cpu_intf_rst_n_sync    ),
+   .cfg_mem_lphase       (cfg_sram_lphase[3]     ), // 0 - Posedge (Default), 1 - Negedge
+   // SRAM Memory I/F, PORT-0
+   .mem_clk0_i           (sram3_clk0        ), // CLK
+   .mem_csb0_i           (sram3_csb0_int    ), // CS#
+   .mem_web0_i           (sram3_web0_int    ), // WE#
+   .mem_addr0_i          (sram3_addr0_int   ), // Address
+   .mem_wmask0_i         (sram3_wmask0_int  ), // WMASK#
+   .mem_din0_i           (sram3_din0_int    ), // Write Data
+   
+   // SRAM-0 PORT-1, 
+   .mem_clk1_i           (sram3_clk1        ), // CLK
+   .mem_csb1_i           (sram3_csb1_int    ), // CS#
+   .mem_addr1_i          (sram3_addr1_int   ), // Address
+
+   // SRAM Memory I/F, PORT-0
+   .mem_csb0_o           (sram3_csb0        ), // CS#
+   .mem_web0_o           (sram3_web0        ), // WE#
+   .mem_addr0_o          (sram3_addr0       ), // Address
+   .mem_wmask0_o         (sram3_wmask0      ), // WMASK#
+   .mem_din0_o           (sram3_din0        ), // Write Data
+   
+   // SRAM-0 PORT-1, 
+   .mem_csb1_o           (sram3_csb1        ), // CS#
+   .mem_addr1_o          (sram3_addr1       )  // Address
+);
+
+
+
+
 
 //-------------------------------------------------------------------------------
 // Memory-mapped timer instance
