@@ -223,6 +223,7 @@ endfunction
 logic                                       req_fifo_rd;
 logic                                       req_fifo_wr;
 logic                                       req_fifo_empty;
+logic                                       req_fifo_aempty;
 logic                                       req_fifo_full;
 logic                                       req_fifo_afull;
 

@@ -499,8 +499,8 @@ assign core1_irq_soft   =  core_irq_soft_i          ; // Software generated inte
 // To avoid core level power hook up, we have brought this signal inside, to
 // avoid any cell at digital core level
 // --------------------------------------------------------------------------------
-assign test_mode = 1'b0;
-assign test_rst_n = 1'b0;
+wire test_mode = 1'b0;
+wire test_rst_n = 1'b0;
 
 wire [63:0]  riscv_debug0 = {core0_imem_req,core0_imem_req_ack,core0_imem_resp[1:0],
 	                     core0_dmem_req,core0_dmem_req_ack,core0_dmem_resp[1:0],
@@ -522,11 +522,11 @@ assign core0_timer_irq          = timer_irq     ;
 assign core1_timer_val          = timer_val     ;                // Machine timer value
 assign core1_timer_irq          = timer_irq     ;
 
-assign core2_timer_val          = timer_val     ;                // Machine timer value
-assign core2_timer_irq          = timer_irq     ;
-
-assign core3_timer_val          = timer_val     ;                // Machine timer value
-assign core3_timer_irq          = timer_irq     ;
+//assign core2_timer_val          = timer_val     ;                // Machine timer value
+//assign core2_timer_irq          = timer_irq     ;
+//
+//assign core3_timer_val          = timer_val     ;                // Machine timer value
+//assign core3_timer_irq          = timer_irq     ;
 
 assign aes_dmem_addr            = aes_dmem_addr_tmp[6:0];
 assign fpu_dmem_addr            = fpu_dmem_addr_tmp[4:0];
@@ -545,8 +545,8 @@ ctech_mux2x1 u_cclk_cts  (.A0(core_clk_g), .A1(1'b0), .S(1'b0), .X(core_clk_cts)
 clk_skew_adjust u_skew_core_clk
        (
 `ifdef USE_POWER_PINS
-     .vccd1                   (vccd1                   ),// User area 1 1.8V supply
-     .vssd1                   (vssd1                   ),// User area 1 digital ground
+     .vccd1                   (VPWR                    ),// User area 1 1.8V supply
+     .vssd1                   (VGND                    ),// User area 1 digital ground
 `endif
 	    .clk_in               (core_clk_int            ), 
 	    .sel                  (cfg_ccska               ), 

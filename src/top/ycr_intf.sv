@@ -300,8 +300,8 @@ clk_skew_adjust u_skew_wb_clk
 // To avoid core level power hook up, we have brought this signal inside, to
 // avoid any cell at digital core level
 // --------------------------------------------------------------------------------
-assign test_mode = 1'b0;
-assign test_rst_n = 1'b0;
+wire  test_mode = 1'b0;
+wire  test_rst_n = 1'b0;
 
 
 //-------------------------------------------------------------------------------

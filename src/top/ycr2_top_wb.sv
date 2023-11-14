@@ -483,6 +483,9 @@ logic                                              cfg_dcache_force_flush;
 logic                                              core_clk_intf_skew;
 logic                                              core_clk_icon_skew;
 logic                                              core_clk_core0_skew;
+logic                                              core_clk_core1_skew;
+
+logic                                              cpu_clk_intf;
 
 //------------------------------------------------------------------------------
 // Tap will be daisy chained Tap Input => <core0> <core1> => Tap Out

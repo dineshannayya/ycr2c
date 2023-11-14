@@ -52,6 +52,8 @@ module ycr_cclk_ctrl_top (
     );
 
 
+logic timer_irq_ss,ext_irq_ss,soft_irq_ss;
+
 //--------------------------------------------------------------------------------------
 // Dummy clock gate to balence avoid clk-skew between two branch for simulation handling
 //--------------------------------------------------------------------------------------
