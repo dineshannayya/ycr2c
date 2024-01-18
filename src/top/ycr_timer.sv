@@ -42,6 +42,8 @@
 ////             registered                                               ////
 ////          B.Spilt the 64 bit adder into two 32 bit adder with         ////
 ////            taking care ofoverflow                                    ////
+////     v3:    18 Jan 2024 - Dinesh A                                    ////
+////          Bug Fix: timer roll over at 32 bit boundary                 ////
 ////                                                                      ////
 //////////////////////////////////////////////////////////////////////////////
 
@@ -172,7 +174,7 @@ always_ff @(posedge clk, negedge rst_n) begin
     end else begin
         if (time_posedge | mtimelo_up | mtimehi_up) begin
             mtime_reg   <= mtime_new;
-	    mtime_32b_ovr <= &mtime_new; // Indicate 32B Overflow in next increment by check all one
+	    mtime_32b_ovr <= &mtime_new[31:0]; // Indicate 32B Overflow in next increment by check all one
         end
     end
 end

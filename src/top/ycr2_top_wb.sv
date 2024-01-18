@@ -111,6 +111,8 @@
 ////            Bug fix in Tap reset connectivity                         ////
 ////     2.10: 18 Sept 2023, Dinesh A                                     ////
 ////            uncahce memory range are created for imem and dmem space  ////
+////     2.11: 18 Jan 2024, Dinesh A                                      ////
+////          Bug Fix: timer roll over at 32 bit boundary                 ////
 ////                                                                      ////
 ////                                                                      ////
 //////////////////////////////////////////////////////////////////////////////
