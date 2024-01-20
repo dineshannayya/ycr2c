@@ -69,7 +69,7 @@ module ycr_timer (
 
     // Timer interface
     output  logic [63:0]                            timer_val,
-    output  logic                                   timer_irq,
+    output  logic [3:0]                             timer_irq,
 
     output  logic [31:0]                            riscv_glbl_cfg,
     output  logic [23:0]                            riscv_clk_cfg,
@@ -85,10 +85,21 @@ localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_CONTROL             = 5'h0
 localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_DIVIDER             = 5'h4;
 localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMELO             = 5'h8;
 localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMEHI             = 5'hC;
-localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMPLO          = 5'h10;
-localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMPHI          = 5'h14;
-localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_GLBL_CONTROL              = 5'h18;
-localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_CLK_CONTROL               = 5'h1C;
+
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMP0LO          = 5'h10;
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMP0HI          = 5'h14;
+
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMP1LO          = 5'h18;
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMP1HI          = 5'h1C;
+
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMP2LO          = 5'h20;
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMP2HI          = 5'h24;
+
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMP3LO          = 5'h28;
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMP3HI          = 5'h2C;
+
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_GLBL_CONTROL              = 5'h30;
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_CLK_CONTROL               = 5'h34;
 
 localparam int unsigned YCR_TIMER_CONTROL_EN_OFFSET                        = 0;
 localparam int unsigned YCR_TIMER_CONTROL_CLKSRC_OFFSET                    = 1;
@@ -100,8 +111,20 @@ localparam int unsigned YCR_TIMER_DIVIDER_WIDTH                            = 10;
 logic [63:0]                                        mtime_reg;
 logic                                               mtime_32b_ovr; // Indicate 32b Ovr flow
 logic [63:0]                                        mtime_new;
-logic [63:0]                                        mtimecmp_reg;
-logic [63:0]                                        mtimecmp_new;
+
+logic [63:0]                                        mtimecmp0_reg;
+logic [63:0]                                        mtimecmp0_new;
+logic [63:0]                                        mtimecmp1_reg;
+logic [63:0]                                        mtimecmp1_new;
+logic [63:0]                                        mtimecmp2_reg;
+logic [63:0]                                        mtimecmp2_new;
+logic [63:0]                                        mtimecmp3_reg;
+logic [63:0]                                        mtimecmp3_new;
+
+logic [3:0]                                         mtimecmplo_up;
+logic [3:0]                                         mtimecmphi_up;
+logic [3:0]                                         time_cmp_flag;
+
 logic                                               timer_en;
 logic                                               timer_clksrc_rtc;
 logic [YCR_TIMER_DIVIDER_WIDTH-1:0]                timer_div;
@@ -110,8 +133,6 @@ logic                                               control_up;
 logic                                               divider_up;
 logic                                               mtimelo_up;
 logic                                               mtimehi_up;
-logic                                               mtimecmplo_up;
-logic                                               mtimecmphi_up;
 logic                                               glbl_cfg_up;
 logic                                               clk_cfg_up;
 
@@ -122,7 +143,6 @@ logic                                               rtc_ext_pulse;
 logic [YCR_TIMER_DIVIDER_WIDTH-1:0]                timeclk_cnt;
 logic                                               timeclk_cnt_en;
 logic                                               time_posedge;
-logic                                               time_cmp_flag;
 
 //-------------------------------------------------------------------------------
 // Registers
@@ -179,26 +199,175 @@ always_ff @(posedge clk, negedge rst_n) begin
     end
 end
 
-// MTIMECMP
+//--------------------------------------
+// MTIMECMP-0
+//--------------------------------------
 always_comb begin
-    mtimecmp_new    = mtimecmp_reg;
-    if (mtimecmplo_up) begin
-        mtimecmp_new[31:0]  = dmem_wdata;
+    mtimecmp0_new    = mtimecmp0_reg;
+    if (mtimecmplo_up[0]) begin
+        mtimecmp0_new[31:0]  = dmem_wdata;
     end
-    if (mtimecmphi_up) begin
-        mtimecmp_new[63:32] = dmem_wdata;
+    if (mtimecmphi_up[0]) begin
+        mtimecmp0_new[63:32] = dmem_wdata;
     end
 end
 
 always_ff @(posedge clk, negedge rst_n) begin
     if (~rst_n) begin
-        mtimecmp_reg    <= '0;
+        mtimecmp0_reg    <= '0;
     end else begin
-        if (mtimecmplo_up | mtimecmphi_up) begin
-            mtimecmp_reg    <= mtimecmp_new;
+        if (mtimecmplo_up[0] | mtimecmphi_up[0]) begin
+            mtimecmp0_reg    <= mtimecmp0_new;
         end
     end
 end
+
+//-------------------------------------------------------------------
+// Timer Interrupt Generation
+//-------------------------------------------------------------------
+assign time_cmp_flag[0] = (mtime_reg >= ((mtimecmplo_up[0] | mtimecmphi_up[0]) ? mtimecmp0_new : mtimecmp0_reg));
+
+always_ff @(posedge clk, negedge rst_n) begin
+    if (~rst_n) begin
+        timer_irq[0]   <= 1'b0;
+    end else begin
+        if (~timer_irq[0]) begin
+            timer_irq[0]   <= time_cmp_flag[0];
+        end else begin // 1'b1
+            if (mtimecmplo_up[0] | mtimecmphi_up[0]) begin
+                timer_irq[0]   <= time_cmp_flag[0];
+            end
+        end
+    end
+end
+
+//--------------------------------------
+// MTIMECMP-1
+//--------------------------------------
+always_comb begin
+    mtimecmp1_new    = mtimecmp1_reg;
+    if (mtimecmplo_up[1]) begin
+        mtimecmp1_new[31:0]  = dmem_wdata;
+    end
+    if (mtimecmphi_up[1]) begin
+        mtimecmp1_new[63:32] = dmem_wdata;
+    end
+end
+
+always_ff @(posedge clk, negedge rst_n) begin
+    if (~rst_n) begin
+        mtimecmp1_reg    <= '0;
+    end else begin
+        if (mtimecmplo_up[1] | mtimecmphi_up[1]) begin
+            mtimecmp1_reg    <= mtimecmp1_new;
+        end
+    end
+end
+
+//----------------------------------------------
+// Timer Interrupt Generation
+//----------------------------------------------
+assign time_cmp_flag[1] = (mtime_reg >= ((mtimecmplo_up[1] | mtimecmphi_up[1]) ? mtimecmp1_new : mtimecmp1_reg));
+
+always_ff @(posedge clk, negedge rst_n) begin
+    if (~rst_n) begin
+        timer_irq[1]   <= 1'b0;
+    end else begin
+        if (~timer_irq[1]) begin
+            timer_irq[1]   <= time_cmp_flag[1];
+        end else begin // 1'b1
+            if (mtimecmplo_up[1] | mtimecmphi_up[1]) begin
+                timer_irq[1]   <= time_cmp_flag[1];
+            end
+        end
+    end
+end
+
+//--------------------------------------
+// MTIMECMP-2
+//--------------------------------------
+always_comb begin
+    mtimecmp2_new    = mtimecmp2_reg;
+    if (mtimecmplo_up[2]) begin
+        mtimecmp2_new[31:0]  = dmem_wdata;
+    end
+    if (mtimecmphi_up[2]) begin
+        mtimecmp2_new[63:32] = dmem_wdata;
+    end
+end
+
+always_ff @(posedge clk, negedge rst_n) begin
+    if (~rst_n) begin
+        mtimecmp2_reg    <= '0;
+    end else begin
+        if (mtimecmplo_up[2] | mtimecmphi_up[2]) begin
+            mtimecmp2_reg    <= mtimecmp2_new;
+        end
+    end
+end
+
+//----------------------------------------------
+// Timer Interrupt Generation
+//----------------------------------------------
+assign time_cmp_flag[2] = (mtime_reg >= ((mtimecmplo_up[2] | mtimecmphi_up[2]) ? mtimecmp2_new : mtimecmp2_reg));
+
+always_ff @(posedge clk, negedge rst_n) begin
+    if (~rst_n) begin
+        timer_irq[2]   <= 1'b0;
+    end else begin
+        if (~timer_irq[2]) begin
+            timer_irq[2]   <= time_cmp_flag[2];
+        end else begin // 1'b1
+            if (mtimecmplo_up[2] | mtimecmphi_up[2]) begin
+                timer_irq[2]   <= time_cmp_flag[2];
+            end
+        end
+    end
+end
+
+//--------------------------------------
+// MTIMECMP-3
+//--------------------------------------
+always_comb begin
+    mtimecmp3_new    = mtimecmp3_reg;
+    if (mtimecmplo_up[3]) begin
+        mtimecmp3_new[31:0]  = dmem_wdata;
+    end
+    if (mtimecmphi_up[3]) begin
+        mtimecmp3_new[63:32] = dmem_wdata;
+    end
+end
+
+always_ff @(posedge clk, negedge rst_n) begin
+    if (~rst_n) begin
+        mtimecmp3_reg    <= '0;
+    end else begin
+        if (mtimecmplo_up[3] | mtimecmphi_up[3]) begin
+            mtimecmp3_reg    <= mtimecmp3_new;
+        end
+    end
+end
+
+//----------------------------------------------
+// Timer Interrupt Generation
+//----------------------------------------------
+assign time_cmp_flag[3] = (mtime_reg >= ((mtimecmplo_up[3] | mtimecmphi_up[3]) ? mtimecmp3_new : mtimecmp3_reg));
+
+always_ff @(posedge clk, negedge rst_n) begin
+    if (~rst_n) begin
+        timer_irq[3]   <= 1'b0;
+    end else begin
+        if (~timer_irq[3]) begin
+            timer_irq[3]   <= time_cmp_flag[3];
+        end else begin // 1'b1
+            if (mtimecmplo_up[3] | mtimecmphi_up[3]) begin
+                timer_irq[3]   <= time_cmp_flag[3];
+            end
+        end
+    end
+end
+
+//---------------------------------------------
 
 always_ff @(posedge clk, negedge rst_n) begin
     if (~rst_n) begin
@@ -254,24 +423,6 @@ generate
    end
    endgenerate
 
-//-------------------------------------------------------------------------------
-// Interrupt pending
-//-------------------------------------------------------------------------------
-assign time_cmp_flag = (mtime_reg >= ((mtimecmplo_up | mtimecmphi_up) ? mtimecmp_new : mtimecmp_reg));
-
-always_ff @(posedge clk, negedge rst_n) begin
-    if (~rst_n) begin
-        timer_irq   <= 1'b0;
-    end else begin
-        if (~timer_irq) begin
-            timer_irq   <= time_cmp_flag;
-        end else begin // 1'b1
-            if (mtimecmplo_up | mtimecmphi_up) begin
-                timer_irq   <= time_cmp_flag;
-            end
-        end
-    end
-end
 
 //-------------------------------------------------------------------------------
 // Timer divider
@@ -349,10 +500,21 @@ always_ff @(negedge rst_n, posedge clk) begin
                         YCR_TIMER_DIVIDER      : dmem_rdata    <= `YCR_DMEM_DWIDTH'(timer_div);
                         YCR_TIMER_MTIMELO      : dmem_rdata    <= mtime_reg[31:0];
                         YCR_TIMER_MTIMEHI      : dmem_rdata    <= mtime_reg[63:32];
-                        YCR_TIMER_MTIMECMPLO   : dmem_rdata    <= mtimecmp_reg[31:0];
-                        YCR_TIMER_MTIMECMPHI   : dmem_rdata    <= mtimecmp_reg[63:32];
-                        YCR_GLBL_CONTROL       : dmem_rdata    <= riscv_glbl_cfg;
-                        YCR_CLK_CONTROL        : dmem_rdata    <= {riscv_sleep,riscv_clk_cfg};
+
+                        YCR_TIMER_MTIMECMP0LO   : dmem_rdata    <= mtimecmp0_reg[31:0];
+                        YCR_TIMER_MTIMECMP0HI   : dmem_rdata    <= mtimecmp0_reg[63:32];
+
+                        YCR_TIMER_MTIMECMP1LO   : dmem_rdata    <= mtimecmp1_reg[31:0];
+                        YCR_TIMER_MTIMECMP1HI   : dmem_rdata    <= mtimecmp1_reg[63:32];
+
+                        YCR_TIMER_MTIMECMP2LO   : dmem_rdata    <= mtimecmp2_reg[31:0];
+                        YCR_TIMER_MTIMECMP2HI   : dmem_rdata    <= mtimecmp2_reg[63:32];
+
+                        YCR_TIMER_MTIMECMP3LO   : dmem_rdata    <= mtimecmp3_reg[31:0];
+                        YCR_TIMER_MTIMECMP3HI   : dmem_rdata    <= mtimecmp3_reg[63:32];
+
+                        YCR_GLBL_CONTROL        : dmem_rdata    <= riscv_glbl_cfg;
+                        YCR_CLK_CONTROL         : dmem_rdata    <= {riscv_sleep,riscv_clk_cfg};
                         default                 : begin end
                     endcase
                 end
@@ -374,14 +536,20 @@ always_comb begin
     clk_cfg_up      = 1'b0;
     if (dmem_req_valid & (dmem_cmd_ff == YCR_MEM_CMD_WR)) begin
         case (dmem_addr_ff)
-            YCR_TIMER_CONTROL      : control_up    = 1'b1;
-            YCR_TIMER_DIVIDER      : divider_up    = 1'b1;
-            YCR_TIMER_MTIMELO      : mtimelo_up    = 1'b1;
-            YCR_TIMER_MTIMEHI      : mtimehi_up    = 1'b1;
-            YCR_TIMER_MTIMECMPLO   : mtimecmplo_up = 1'b1;
-            YCR_TIMER_MTIMECMPHI   : mtimecmphi_up = 1'b1;
-	        YCR_GLBL_CONTROL       : glbl_cfg_up   = 1'b1;
-	        YCR_CLK_CONTROL        : clk_cfg_up   = 1'b1;
+            YCR_TIMER_CONTROL      : control_up      = 1'b1;
+            YCR_TIMER_DIVIDER      : divider_up      = 1'b1;
+            YCR_TIMER_MTIMELO      : mtimelo_up      = 1'b1;
+            YCR_TIMER_MTIMEHI      : mtimehi_up      = 1'b1;
+            YCR_TIMER_MTIMECMP0LO  : mtimecmplo_up[0]  = 1'b1;
+            YCR_TIMER_MTIMECMP0HI  : mtimecmphi_up[0]  = 1'b1;
+            YCR_TIMER_MTIMECMP1LO  : mtimecmplo_up[1]  = 1'b1;
+            YCR_TIMER_MTIMECMP1HI  : mtimecmphi_up[1]  = 1'b1;
+            YCR_TIMER_MTIMECMP2LO  : mtimecmplo_up[2]  = 1'b1;
+            YCR_TIMER_MTIMECMP2HI  : mtimecmphi_up[2]  = 1'b1;
+            YCR_TIMER_MTIMECMP3LO  : mtimecmplo_up[3]  = 1'b1;
+            YCR_TIMER_MTIMECMP3HI  : mtimecmphi_up[3]  = 1'b1;
+	        YCR_GLBL_CONTROL       : glbl_cfg_up     = 1'b1;
+	        YCR_CLK_CONTROL        : clk_cfg_up      = 1'b1;
             default                : begin end
         endcase
     end

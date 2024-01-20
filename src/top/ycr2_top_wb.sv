@@ -113,6 +113,9 @@
 ////            uncahce memory range are created for imem and dmem space  ////
 ////     2.11: 18 Jan 2024, Dinesh A                                      ////
 ////          Bug Fix: timer roll over at 32 bit boundary                 ////
+////     2.12: 20 Jan 2024, Dinesh A                                      ////
+////          Bug Fix: For muti-core system need independent timer compare////
+////          Time Out Register                                           ////
 ////                                                                      ////
 ////                                                                      ////
 //////////////////////////////////////////////////////////////////////////////
