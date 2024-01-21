@@ -247,8 +247,8 @@ parameter bit [`YCR_DMEM_AWIDTH-1:0]   YCR_TCM_ADDR_PATTERN       = 'h0C480000; 
 parameter bit [`YCR_DMEM_AWIDTH-1:0]   YCR_LOCAL_ADDR_MASK        = 'hFFFF0000;       // RISC LOCAL Address Map
 parameter bit [`YCR_DMEM_AWIDTH-1:0]   YCR_LOCAL_ADDR_PATTERN     = 'h0C490000;       // pattern - 0x0C490000 - 0x0C49FFFF
 
-parameter bit [`YCR_DMEM_AWIDTH-1:0]   YCR_TIMER_ADDR_MASK        = 'hFFFFFFE0;       // Timer mask
-parameter bit [`YCR_DMEM_AWIDTH-1:0]   YCR_TIMER_ADDR_PATTERN     = 'h0C490000;       // Timer address match pattern - 0x0C490000 - 0x0C49001F
+parameter bit [`YCR_DMEM_AWIDTH-1:0]   YCR_TIMER_ADDR_MASK        = 'hFFFFFF80;       // Timer mask
+parameter bit [`YCR_DMEM_AWIDTH-1:0]   YCR_TIMER_ADDR_PATTERN     = 'h0C490000;       // Timer address match pattern - 0x0C490000 - 0x0C49007F
 
 parameter bit [`YCR_DMEM_AWIDTH-1:0]   YCR_AES_ADDR_MASK          = 'hFFFFFF80;       // AES MASK
 parameter bit [`YCR_DMEM_AWIDTH-1:0]   YCR_AES_ADDR_PATTERN       = 'h0C490080;       // AES Address Match Pattern    -0x0C490080 - 0x0C4900FF

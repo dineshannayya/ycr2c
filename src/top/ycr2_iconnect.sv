@@ -58,7 +58,6 @@ module ycr2_iconnect (
 `endif
 
     // Control
-    input   logic [3:0]                  cfg_ccska     ,
     input   logic                        core_clk_int  ,
     output  logic                        core_clk_skew ,
 
@@ -542,15 +541,14 @@ ctech_mux2x1 u_cclk_cts  (.A0(core_clk_g), .A1(1'b0), .S(1'b0), .X(core_clk_cts)
 //--------------------------------------------
 // RISCV clock skew control
 //--------------------------------------------
-clk_skew_adjust u_skew_core_clk
+ctech_clk_buf u_skew_core_clk
        (
 `ifdef USE_POWER_PINS
      .vccd1                   (VPWR                    ),// User area 1 1.8V supply
      .vssd1                   (VGND                    ),// User area 1 digital ground
 `endif
-	    .clk_in               (core_clk_int            ), 
-	    .sel                  (cfg_ccska               ), 
-	    .clk_out              (core_clk_skew           ) 
+	    .A               (core_clk_int            ), 
+	    .X              (core_clk_skew           ) 
        );
 
 //-------------------------------------------------------------------------------

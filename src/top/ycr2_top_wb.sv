@@ -138,7 +138,6 @@ module ycr2_top_wb                      (
          input logic                          vssd1,    // User area 1 digital ground
 `endif
     // WB Clock Skew Control
-    input  logic   [3:0]                      cfg_wcska_riscv_intf,
     input  logic                              wbd_clk_int,
     output logic                              wbd_clk_skew ,
 
@@ -510,7 +509,6 @@ ycr2_iconnect u_connect (
           .cfg_bypass_dcache            (cfg_bypass_dcache            ), // 1 -> Bypass dcache
 
           // Core clock skew control
-          .cfg_ccska                    (cfg_ccska_riscv_icon         ),
           .core_clk_int                 (core_clk_int                 ),
           .core_clk_skew                (core_clk_icon_skew           ),
           .core_clk                     (core_clk_icon_skew           ), // Core clock
@@ -731,14 +729,12 @@ ycr_intf u_intf(
 `endif
 
      // Core clock skew control
-    .cfg_ccska                (cfg_ccska_riscv_intf      ),
     .core_clk_int             (cpu_clk_intf              ),
     .core_clk_skew            (core_clk_intf_skew        ),
     .core_clk                 (core_clk_intf_skew        ), // Core clock
 
 
      // WB  clock skew control
-    .cfg_wcska                (cfg_wcska_riscv_intf      ),
     .wbd_clk_int              (wbd_clk_int               ),
     .wbd_clk_skew             (wbd_clk_skew              ),
 
@@ -883,7 +879,6 @@ ycr_core_top i_core_top_0 (
           .rst_n                        (rst_n                        ),
           .cpu_rst_n                    (cpu_core_rst_n[0]            ),
           // Core clock skew control
-          .cfg_ccska                    (cfg_ccska_riscv_core0        ),
           .core_clk_int                 (core0_clk                    ),
           .core_clk_skew                (core_clk_core0_skew          ),
           .clk                          (core_clk_core0_skew          ),
@@ -957,7 +952,6 @@ ycr_core_top i_core_top_1 (
           .rst_n                        (rst_n                        ),
           .cpu_rst_n                    (cpu_core_rst_n[1]            ),
           // Core clock skew control
-          .cfg_ccska                    (cfg_ccska_riscv_core1        ),
           .core_clk_int                 (core1_clk                    ),
           .core_clk_skew                (core_clk_core1_skew          ),
           .clk                          (core_clk_core1_skew          ),

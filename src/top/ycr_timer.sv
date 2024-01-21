@@ -80,26 +80,26 @@ module ycr_timer (
 //-------------------------------------------------------------------------------
 // Local parameters declaration
 //-------------------------------------------------------------------------------
-localparam int unsigned YCR_TIMER_ADDR_WIDTH                               = 5;
-localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_CONTROL             = 5'h0;
-localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_DIVIDER             = 5'h4;
-localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMELO             = 5'h8;
-localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMEHI             = 5'hC;
+localparam int unsigned YCR_TIMER_ADDR_WIDTH                               = 6;
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_CONTROL             = 6'h0;
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_DIVIDER             = 6'h4;
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMELO             = 6'h8;
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMEHI             = 6'hC;
 
-localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMP0LO          = 5'h10;
-localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMP0HI          = 5'h14;
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMP0LO          = 6'h10;
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMP0HI          = 6'h14;
 
-localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMP1LO          = 5'h18;
-localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMP1HI          = 5'h1C;
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMP1LO          = 6'h18;
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMP1HI          = 6'h1C;
 
-localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMP2LO          = 5'h20;
-localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMP2HI          = 5'h24;
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMP2LO          = 6'h20;
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMP2HI          = 6'h24;
 
-localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMP3LO          = 5'h28;
-localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMP3HI          = 5'h2C;
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMP3LO          = 6'h28;
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMP3HI          = 6'h2C;
 
-localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_GLBL_CONTROL              = 5'h30;
-localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_CLK_CONTROL               = 5'h34;
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_GLBL_CONTROL              = 6'h30;
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_CLK_CONTROL               = 6'h34;
 
 localparam int unsigned YCR_TIMER_CONTROL_EN_OFFSET                        = 0;
 localparam int unsigned YCR_TIMER_CONTROL_CLKSRC_OFFSET                    = 1;

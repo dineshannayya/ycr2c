@@ -64,7 +64,6 @@ module ycr_core_top (
     input   logic                                   rst_n,                      // Regular reset
     input   logic                                   cpu_rst_n,                  // CPU reset
 
-    input   logic [3:0]                             cfg_ccska     ,
     input   logic                                   core_clk_int  ,
     output  logic                                   core_clk_skew ,
 
@@ -260,15 +259,14 @@ assign clk_o = clk;
 //--------------------------------------------
 // RISCV clock skew control
 //--------------------------------------------
-clk_skew_adjust u_skew_core_clk
+ctech_clk_buf u_skew_core_clk
        (
 `ifdef USE_POWER_PINS
      .vccd1                   (vccd1                   ),// User area 1 1.8V supply
      .vssd1                   (vssd1                   ),// User area 1 digital ground
 `endif
-	    .clk_in               (core_clk_int            ), 
-	    .sel                  (cfg_ccska               ), 
-	    .clk_out              (core_clk_skew           ) 
+	    .A               (core_clk_int            ), 
+	    .X              (core_clk_skew           ) 
        );
 
 

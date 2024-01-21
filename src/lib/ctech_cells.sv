@@ -7,7 +7,7 @@ module ctech_mux2x1 #(parameter WB = 1) (
 
 `ifndef SYNTHESIS
 assign X = (S) ? A1 : A0;
-`else 
+`elsif PDK_SKY130NM  
     generate
        if (WB > 1)
        begin : bus_
@@ -19,6 +19,8 @@ assign X = (S) ? A1 : A0;
           sky130_fd_sc_hd__mux2_8 u_mux (.A0 (A0), .A1 (A1), .S  (S), .X (X));
        end
     endgenerate
+`else
+assign X = (S) ? A1 : A0;
 `endif
 
 endmodule
@@ -31,7 +33,7 @@ module ctech_mux2x1_2 #(parameter WB = 1) (
 
 `ifndef SYNTHESIS
 assign X = (S) ? A1 : A0;
-`else 
+`elsif PDK_SKY130NM  
     generate
        if (WB > 1)
        begin : bus_
@@ -43,6 +45,8 @@ assign X = (S) ? A1 : A0;
           sky130_fd_sc_hd__mux2_2 u_mux (.A0 (A0), .A1 (A1), .S  (S), .X (X));
        end
     endgenerate
+`else
+assign X = (S) ? A1 : A0;
 `endif
 
 endmodule
@@ -55,7 +59,7 @@ module ctech_mux2x1_4 #(parameter WB = 1) (
 
 `ifndef SYNTHESIS
 assign X = (S) ? A1 : A0;
-`else 
+`elsif PDK_SKY130NM  
     generate
        if (WB > 1)
        begin : bus_
@@ -67,6 +71,8 @@ assign X = (S) ? A1 : A0;
           sky130_fd_sc_hd__mux2_4 u_mux (.A0 (A0), .A1 (A1), .S  (S), .X (X));
        end
     endgenerate
+`else
+assign X = (S) ? A1 : A0;
 `endif
 
 endmodule
@@ -77,8 +83,10 @@ module ctech_buf (
 
 `ifndef SYNTHESIS
 assign X = A;
-`else
+`elsif PDK_SKY130NM 
     sky130_fd_sc_hd__bufbuf_8 u_buf  (.A(A),.X(X));
+`else
+assign X = A;
 `endif
 
 endmodule
@@ -89,8 +97,10 @@ module ctech_clk_buf (
 
 `ifndef SYNTHESIS
 assign X = A;
-`else
+`elsif PDK_SKY130NM 
     sky130_fd_sc_hd__clkbuf_8 u_buf  (.A(A),.X(X));
+`else
+assign X = A;
 `endif
 
 endmodule
@@ -101,8 +111,11 @@ module ctech_delay_buf (
 
 `ifndef SYNTHESIS
     assign X = A;
-`else
+`elsif PDK_SKY130NM 
      sky130_fd_sc_hd__dlygate4sd3_1 u_dly (.X(X),.A(A));
+ `else
+    assign X = A;
+ 
 `endif
 
 endmodule
@@ -114,9 +127,11 @@ module ctech_delay_clkbuf (
 wire X1;
 `ifndef SYNTHESIS
     assign X = A;
-`else
+`elsif PDK_SKY130NM 
      sky130_fd_sc_hd__clkbuf_1 u_dly0 (.X(X1),.A(A));
      sky130_fd_sc_hd__clkbuf_1 u_dly1 (.X(X),.A(X1));
+`else
+    assign X = A;
 `endif
 
 endmodule
@@ -138,12 +153,24 @@ module ctech_clk_gate (
        end
    end
 
-`else
+`elsif PDK_SKY130NM
     sky130_fd_sc_hd__dlclkp_2 u_gate(
                                    .GATE    (GATE     ), 
                                    .CLK     (CLK      ), 
                                    .GCLK    (GCLK     )
+
                                   );
+`else
+   logic clk_enb;
+
+   assign #1 GCLK  = CLK & clk_enb;
+   
+   always_latch begin
+       if(CLK == 0) begin
+            clk_enb <= GATE;
+       end
+   end
+
 `endif
 
 endmodule
@@ -179,10 +206,10 @@ begin
       in_data_3s <= in_data_2s;
    end
 end
-`else 
+`elsif PDK_SKY130NM 
     wire [WB-1:0]     in_data_s  ; // One   Cycle sync 
     wire [WB-1:0]     in_data_2s ; // two   Cycle sync 
-    wire [WB-1:0]     out_data ; // three Cycle sync 
+    
     generate
        if (WB > 1)
        begin : bus_
@@ -198,6 +225,29 @@ end
              sky130_fd_sc_hd__dfrtp_1 u_dsync2 (.CLK(out_clk),.D(in_data_2s),.RESET_B(out_rst_n),.Q(out_data));
        end
     endgenerate
+`else
+reg [WB-1:0]     in_data_s  ; // One   Cycle sync 
+reg [WB-1:0]     in_data_2s ; // two   Cycle sync 
+reg [WB-1:0]     in_data_3s ; // three Cycle sync 
+
+assign out_data =  in_data_3s;
+
+always @(negedge out_rst_n or posedge out_clk)
+begin
+   if(out_rst_n == 1'b0)
+   begin
+      in_data_s  <= {WB{1'b0}};
+      in_data_2s <= {WB{1'b0}};
+      in_data_3s <= {WB{1'b0}};
+   end
+   else
+   begin
+      in_data_s  <= in_data;
+      in_data_2s <= in_data_s;
+      in_data_3s <= in_data_2s;
+   end
+end
+
 `endif
 
 endmodule

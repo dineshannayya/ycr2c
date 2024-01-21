@@ -38,7 +38,7 @@ module ycr_cclk_ctrl_top (
      input   logic  [7:0]                    riscv_sleep         ,
      output  logic  [7:0]                    riscv_wakeup        ,
 
-     input   logic                           timer_irq           ,
+     input   logic  [3:0]                    timer_irq           ,
      input   logic [YCR_IRQ_LINES_NUM-1:0]   core_irq_lines_i    , // External interrupt request lines
      input   logic                           core_irq_soft_i     , // Software generated interrupt request
 
@@ -52,7 +52,8 @@ module ycr_cclk_ctrl_top (
     );
 
 
-logic timer_irq_ss,ext_irq_ss,soft_irq_ss;
+logic [3:0] timer_irq_ss;
+logic ext_irq_ss, soft_irq_ss;
 
 //--------------------------------------------------------------------------------------
 // Dummy clock gate to balence avoid clk-skew between two branch for simulation handling
@@ -80,11 +81,11 @@ ycr_reset_sync  u_rst_sync (
           );
 
 
-ctech_dsync_high  #(.WB(1)) u_timer_irq(
-              .in_data    ( timer_irq        ),
+ctech_dsync_high  #(.WB(4)) u_timer_irq(
+              .in_data    ( timer_irq[3:0]   ),
               .out_clk    ( cclk_gate_cts    ),
               .out_rst_n  ( rst_ssn          ),
-              .out_data   ( timer_irq_ss     )
+              .out_data   ( timer_irq_ss[3:0])
           );
 
 wire ext_irq = |(core_irq_lines_i);
@@ -141,7 +142,7 @@ ycr_clk_gate2  u_core_s0(
                         .clk_in                (cclk_gate_cts       ),
                         .cfg_mode              (riscv_clk_cfg[6:4]  ),
                         .dst_idle              (riscv_sleep[0]      ), // 1 - indicate destination is ideal
-                        .irq1                  (timer_irq_ss        ), // 1 - Timer Interrupt
+                        .irq1                  (timer_irq_ss[0]     ), // 1 - Timer Interrupt
                         .irq2                  (ext_irq_ss          ), // 1 - Source Request
                         .irq3                  (soft_irq_ss         ), // 1 - Source Request
 
@@ -159,7 +160,7 @@ ycr_clk_gate2  u_core_s1(
                         .clk_in                (cclk_gate_cts       ),
                         .cfg_mode              (riscv_clk_cfg[10:8] ),
                         .dst_idle              (riscv_sleep[1]      ), // 1 - indicate destination is ideal
-                        .irq1                  (timer_irq_ss        ), // 1 - Timer Interrupt
+                        .irq1                  (timer_irq_ss[1]     ), // 1 - Timer Interrupt
                         .irq2                  (ext_irq_ss          ), // 1 - Source Request
                         .irq3                  (soft_irq_ss         ), // 1 - Source Request
 
