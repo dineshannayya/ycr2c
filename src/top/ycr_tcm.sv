@@ -140,9 +140,6 @@ module ycr_tcm
 //-------------------------------------------------------------------------------
 // Local signal declaration
 //-------------------------------------------------------------------------------
-logic                               imem_rd;
-logic                               dmem_rd;
-logic                               dmem_wr;
 logic [`YCR_DMEM_DWIDTH-1:0]       dmem_writedata;
 logic [`YCR_DMEM_DWIDTH-1:0]       dmem_rdata_local;
 logic [3:0]                        dmem_byteen;

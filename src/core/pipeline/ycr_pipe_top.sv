@@ -307,7 +307,7 @@ logic                                       brkpt_qlfy;
 logic                                       exu_busy;
 
 
-`ifndef YCR_CLKCTRL_EN
+`ifdef YCR_CLKCTRL_EN
 logic                                       pipe2clkctl_wake_req_o;
 `endif // YCR_CLKCTRL_EN
 
