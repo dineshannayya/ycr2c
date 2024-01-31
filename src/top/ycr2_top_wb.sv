@@ -116,6 +116,9 @@
 ////     2.12: 20 Jan 2024, Dinesh A                                      ////
 ////          Bug Fix: For muti-core system need independent timer compare////
 ////          Time Out Register                                           ////
+////          Bug Fix: Tap order changed to  <core1><core0>               ////
+////          Bug Fix: As tdo_en is active high, At top-level pinmux level////
+////                   this signal is inverted                            ////
 ////                                                                      ////
 ////                                                                      ////
 //////////////////////////////////////////////////////////////////////////////
@@ -492,8 +495,9 @@ logic                                              core_clk_core1_skew;
 logic                                              cpu_clk_intf;
 
 //------------------------------------------------------------------------------
-// Tap will be daisy chained Tap Input => <core0> <core1> => Tap Out
+// Tap will be daisy chained Tap Input => <core1> <core0> => Tap Out
 //------------------------------------------------------------------------------
+logic                                              core1_tdo;
 logic                                              core0_tdo;
 
 
@@ -906,9 +910,9 @@ ycr_core_top i_core_top_0 (
           .trst_n                       (trst_n                       ),
           .tapc_tck                     (tck                          ),
           .tapc_tms                     (tms                          ),
-          .tapc_tdi                     (tdi                          ),
-          .tapc_tdo                     (core0_tdo                    ),
-          .tapc_tdo_en                  (                             ),
+          .tapc_tdi                     (core1_tdo                    ),
+          .tapc_tdo                     (tdo                          ),
+          .tapc_tdo_en                  (tdo_en                       ),
 `endif // YCR_DBG_EN
 
    //---- inter-connect
@@ -980,9 +984,9 @@ ycr_core_top i_core_top_1 (
           .trst_n                       (trst_n                       ),
           .tapc_tck                     (tck                          ),
           .tapc_tms                     (tms                          ),
-          .tapc_tdi                     (core0_tdo                    ), // daisy chain with core-0
-          .tapc_tdo                     (tdo                          ),
-          .tapc_tdo_en                  (tdo_en                       ),
+          .tapc_tdi                     (tdi                          ), // daisy chain with core-0
+          .tapc_tdo                     (core1_tdo                    ),
+          .tapc_tdo_en                  (                             ),
 `endif // YCR_DBG_EN
 
    //---- inter-connect

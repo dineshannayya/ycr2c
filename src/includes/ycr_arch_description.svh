@@ -271,6 +271,10 @@ parameter bit [`YCR_DMEM_AWIDTH-1:0]   YCR_FPU_ADDR_PATTERN       = 'h0C490100; 
   `define YCR_MPRF_RAM           // implements MPRF with dedicated RAM blocks
 `endif
 
+`ifdef YCR_TRGT_FPGA_XILINX
+  `define YCR_MPRF_RAM           // implements MPRF with dedicated RAM blocks
+`endif
+
 // EXU_STAGE_BYPASS and MPRF_RST_EN must be disabled for RAM-based MPRF
 `ifdef YCR_MPRF_RAM
   `undef  YCR_NO_EXE_STAGE
