@@ -116,6 +116,8 @@
 ////    0.2 - 20th Jan 2022, Dinesh A                             
 ////          moved the user cpu  wishbone interface to custom cpu interface and
 ////          bug fix around buswidth
+////    0.3 - 13 Mar 2024, Dinesh A
+////          direct icache write allowed for RVC/Fence Instruction
 ////
 //// ******************************************************************************************************
 
@@ -142,6 +144,8 @@ module icache_top #(
         input logic   [WB_AW-1:0]          cpu_mem_addr, // address
         input logic   [MEM_BL-1:0]         cpu_mem_bl,   // Burst Size
         input logic   [1:0]                cpu_mem_width, // address
+        input logic                        cpu_mem_cmd,
+        input logic   [WB_DW-1:0]          cpu_mem_wdata, // data input
 
 	output logic                       cpu_mem_req_ack, // Ack for Strob request accepted
         output logic   [WB_DW-1:0]         cpu_mem_rdata, // data input
@@ -242,6 +246,8 @@ logic	                          cache_next_hit           ;
 
 
 logic [WB_AW-1:0]                cpu_addr_l                ;
+logic                            cpu_wr_l                  ;
+logic [3:0]                      cpu_be_l                  ;
 logic [1:0]                      cpu_width_l               ;
 logic [MEM_BL-1:0]               cpu_bl_l               ;
 logic [WB_AW-1:0]                cache_refill_addr         ;
@@ -261,6 +267,32 @@ logic                             cache_refill_req         ; // Request for Refi
 logic                             cache_prefill_req        ; // Request for complete prefill 32 x 16
 logic                             cache_busy               ; // Request for complete prefill 32 x 16
 
+// Riscv has instruction to write data into icache memory. Note: This will not be written back to external flash
+logic                       cache_mem_dcsb0                ; // CS#
+logic                       cache_mem_dweb0                ; // WE#
+logic   [8:0]               cache_mem_daddr0               ; // Address
+logic   [3:0]               cache_mem_dwmask0              ; // WMASK#
+logic   [31:0]              cache_mem_ddin0                ; // Write Data
+logic                       cache_mem_dwenb                ; 
+
+// icache memory write by cache fill
+logic                       cache_mem_fcsb0           ; // CS#
+logic                       cache_mem_fweb0           ; // WE#
+logic   [8:0]               cache_mem_faddr0          ; // Address
+logic   [3:0]               cache_mem_fwmask0         ; // WMASK#
+logic   [31:0]              cache_mem_fdin0           ; // Write Data
+
+
+// RISCV has instruction to write icache memory using RVC and Fence instruction; To support this
+// We have added given option to write to icache memory apart from refill option
+
+assign cache_mem_csb0         = (cache_mem_dwenb) ? cache_mem_dcsb0   : cache_mem_fcsb0;  // CS#
+assign cache_mem_web0         = (cache_mem_dwenb) ? cache_mem_dweb0   : cache_mem_fweb0;  // WE#
+assign cache_mem_addr0        = (cache_mem_dwenb) ? cache_mem_daddr0  : cache_mem_faddr0; // Address
+assign cache_mem_wmask0       = (cache_mem_dwenb) ? cache_mem_dwmask0 : cache_mem_fwmask0; // WMASK#
+assign cache_mem_din0         = (cache_mem_dwenb) ? cache_mem_ddin0   : cache_mem_fdin0  ; // Write Data
+
+
 
 assign cache_mem_clk1 = mclk;
 
@@ -269,6 +301,29 @@ assign cache_mem_clk1 = mclk;
 reg [3:0] state;
 
 // Function
+
+// Generate Wishbone Write Select
+function automatic logic[3:0] ycr_conv_mem2wb_be (
+	input logic [1:0] hwidth,
+	input logic [1:0] haddr
+);
+logic [3:0] hbel_in;
+begin
+    hbel_in = 0;
+    case (hwidth)
+        2'b00 : begin
+            hbel_in = 4'b0001 << haddr[1:0];
+        end
+        2'b01 : begin
+            hbel_in = 4'b0011 << {haddr[1],1'b0};
+        end
+        2'b10 : begin
+            hbel_in = 4'b1111;
+        end
+    endcase
+    ycr_conv_mem2wb_be = hbel_in;
+end
+endfunction
 
 //Generate cpu read data based on width and address[1:0]
 function automatic logic[WB_DW-1:0] ycr_conv_wb2mem_rdata (
@@ -320,7 +375,59 @@ wire [CACHE_LINE_WD-1:0]  next_prefetch_ptr = prefetch_ptr[CACHE_LINE_WD-1:0] + 
 
 // Cache Controller State Machine and Logic
 
+function automatic logic[WB_DW-1:0] ycr_conv_mem2wb_wdata (
+    input   logic [1:0]                    dmem_width,
+    input   logic   [1:0]                  dmem_addr,
+    input   logic   [WB_DW-1:0]    dmem_wdata
+);
+    logic   [WB_DW-1:0]  tmp;
+begin
+    tmp = 'x;
+    case (dmem_width)
+        2'b00 : begin
+            case (dmem_addr)
+                2'b00 : begin
+                    tmp[7:0]   = dmem_wdata[7:0];
+                end
+                2'b01 : begin
+                    tmp[15:8]  = dmem_wdata[7:0];
+                end
+                2'b10 : begin
+                    tmp[23:16] = dmem_wdata[7:0];
+                end
+                2'b11 : begin
+                    tmp[31:24] = dmem_wdata[7:0];
+                end
+                default : begin
+                end
+            endcase
+        end
+        2'b01 : begin
+            case (dmem_addr[1])
+                1'b0 : begin
+                    tmp[15:0]  = dmem_wdata[15:0];
+                end
+                1'b1 : begin
+                    tmp[31:16] = dmem_wdata[15:0];
+                end
+                default : begin
+                end
+            endcase
+        end
+        2'b10 : begin
+            tmp = dmem_wdata;
+        end
+        default : begin
+        end
+    endcase
+    ycr_conv_mem2wb_wdata = tmp;
+end
+endfunction
 
+
+
+logic [31:0] mem2wb_data_l;
+wire [31:0] mem2wb_data  = ycr_conv_mem2wb_wdata(cpu_mem_width,cpu_mem_addr[1:0], cpu_mem_wdata);
 
 always@(posedge mclk or negedge rst_n)
 begin
@@ -336,7 +443,10 @@ begin
       cache_mem_ptr     <= '0;
 
       cpu_addr_l        <= '0;
+      cpu_wr_l          <= '0;
+      cpu_be_l          <= '0;
       cpu_width_l       <= '0;
+      mem2wb_data_l     <= '0;
       cpu_bl_l          <= '0;
 
       prefetch_data     <= '0;
@@ -349,12 +459,20 @@ begin
       cache_prefill_req <= '0;
       cache_refill_addr <= '0;
 
+	  cache_mem_daddr0  <= '0;
+      cache_mem_dcsb0   <= '0;
+      cache_mem_dweb0   <= '0;
+      cache_mem_dwmask0 <= '0;
+      cache_mem_ddin0   <= '0;
+      cache_mem_dwenb   <= '0;
+
       state             <= CACHE_PREFILL_WAIT;
 
    end else begin
       case(state)
       IDLE	:begin
 
+     cache_mem_dwenb   <= '0;
 	 cache_mem_ptr     <= '0;
 
 	 if(cfg_bypass_icache) begin
@@ -362,32 +480,35 @@ begin
 	 end
 	// Check if the current address is next location of same cache offset
 	// if yes, pick the data from prefetch content
-	 else if(!cfg_pfet_dis && cpu_mem_req && prefetch_val && 
+	 else if(!cfg_pfet_dis && cpu_mem_req && (!cpu_mem_cmd) && prefetch_val && 
 	     (cpu_mem_addr[31:2] == {cpu_addr_l[31:7], prefetch_ptr[CACHE_LINE_WD-1:0]})) begin
              cpu_mem_req_ack  <= '1;
-	     state            <= PREFETCH_START;
+	         state            <= PREFETCH_START;
          end else begin
-	    cpu_mem_resp      <= 2'b00;
-	    cache_mem_addr1   <= '0;
-	    cache_mem_csb1    <= 1'b1;
+	         cpu_mem_resp      <= 2'b00;
+	         cache_mem_addr1   <= '0;
+	         cache_mem_csb1    <= 1'b1;
 
-	    if(cpu_mem_req && (cpu_mem_resp == 2'b00)) begin
-                cpu_mem_req_ack  <= '1;
-	        cpu_addr_l       <= cpu_mem_addr;
-		cpu_width_l      <= cpu_mem_width;
-		cpu_bl_l         <= cpu_mem_bl;
-		prefetch_val     <= 1'b0;
-	        state            <= TAG_COMPARE;
-	    end else if(!cfg_ntag_pfet_dis && !cache_next_hit && !cache_busy) begin 
-	    // If there is no Next Tag Hit and cache fsm is free, the give
-            // additional Next Tag Pre-fetech request
-	       cache_refill_req         <= 1;
-	       cache_refill_addr[31:27] <= cpu_addr_l[31:27];
-	       cache_refill_addr[26:7]  <= tag_cmp_data+1;
-	       cache_refill_addr[6:0]   <= '0;
-	       state                    <= NEXT_CACHE_REFILL_REQ;
+	         if(cpu_mem_req && (cpu_mem_resp == 2'b00)) begin
+	             cpu_addr_l       <= cpu_mem_addr;
+                 cpu_wr_l         <= cpu_mem_cmd;
+		         cpu_width_l      <= cpu_mem_width;
+                 mem2wb_data_l    <= mem2wb_data;
+	             cpu_be_l         <= ycr_conv_mem2wb_be(cpu_mem_width,cpu_mem_addr[1:0]);
+		         cpu_bl_l         <= cpu_mem_bl;
+		         prefetch_val     <= 1'b0;
+                 cpu_mem_req_ack  <= '1;
+	             state            <= TAG_COMPARE;
+	             end else if(!cfg_ntag_pfet_dis && !cache_next_hit && !cache_busy) begin 
+	             // If there is no Next Tag Hit and cache fsm is free, the give
+                 // additional Next Tag Pre-fetech request
+	             cache_refill_req         <= 1;
+	             cache_refill_addr[31:27] <= cpu_addr_l[31:27];
+	             cache_refill_addr[26:7]  <= tag_cmp_data+1;
+	             cache_refill_addr[6:0]   <= '0;
+	             state                    <= NEXT_CACHE_REFILL_REQ;
+	          end
 	     end
-	 end
       end
 
       //----------------------------------------------------
@@ -399,23 +520,38 @@ begin
 
       TAG_COMPARE	:begin
          cpu_mem_req_ack  <= '0;
-	 cpu_mem_resp     <= 2'b00; // Disable Ack
+	     cpu_mem_resp     <= 2'b00; // Disable Ack
          case(cache_hit)
-	 1'd0:begin // If there is no Tag Hit
-	      if(cache_busy == 0) begin
-	        cache_refill_req  <= 1;
-		cache_refill_addr <= cpu_addr_l;
-	        state             <= CACHE_REFILL_WAIT;
-	     end
-         end
+	         1'd0:begin // If there is no Tag Hit
+	              if(cache_busy == 0) begin
+	                cache_refill_req  <= 1;
+	                cache_refill_addr <= cpu_addr_l;
+	                state             <= CACHE_REFILL_WAIT;
+	             end
+                 end
 
-	 1'd1:	begin // If Tag Hit
-	      cache_mem_addr1  <= {tag_hindex,cpu_addr_l[6:2]};
-	      prefetch_index   <= tag_hindex;
-	      prefetch_ptr     <= cpu_addr_l[6:2]+1;
-	      cache_mem_csb1   <= 1'b0;
-	      state            <= CACHE_RDATA_FETCH1; // Read Cache
-	  end
+	         1'd1:	begin // If Tag Hit
+	             if(cpu_wr_l) begin // cpu write access
+                     if(!cache_busy) begin // wait for no pending cache refill access
+	                      cpu_mem_resp      <= 2'b11; // Last response
+
+                          // Special case: Riscv has instruction, where it can write icache memory as part of fence/rvc command
+	                      cache_mem_daddr0  <= {tag_hindex,cpu_addr_l[6:2]};
+                          cache_mem_dcsb0   <= 1'b0;
+                          cache_mem_dweb0   <= 1'b0;
+                          cache_mem_dwmask0 <= cpu_be_l;
+                          cache_mem_ddin0   <= mem2wb_data_l;
+                          cache_mem_dwenb   <= 1'b1;
+	                      state             <= IDLE;
+                     end
+	             end else begin // cpu read access
+	                 cache_mem_addr1  <= {tag_hindex,cpu_addr_l[6:2]};
+	                 prefetch_index   <= tag_hindex;
+	                 prefetch_ptr     <= cpu_addr_l[6:2]+1;
+	                 cache_mem_csb1   <= 1'b0;
+	                 state            <= CACHE_RDATA_FETCH1; // Read Cache
+                 end
+	          end
 	  endcase
        end
        //--------------------------------------------------------------------------
@@ -607,15 +743,15 @@ icache_app_fsm  #(
 	
 	// CACHE SRAM Memory I/F
         .cache_mem_clk0               (cache_mem_clk0      ), // CLK
-        .cache_mem_csb0               (cache_mem_csb0      ), // CS#
-        .cache_mem_web0               (cache_mem_web0      ), // WE#
-        .cache_mem_addr0              (cache_mem_addr0     ), // Address
-        .cache_mem_wmask0             (cache_mem_wmask0    ), // WMASK#
-        .cache_mem_din0               (cache_mem_din0      ), // Write Data
+        .cache_mem_csb0               (cache_mem_fcsb0     ), // CS#
+        .cache_mem_web0               (cache_mem_fweb0     ), // WE#
+        .cache_mem_addr0              (cache_mem_faddr0    ), // Address
+        .cache_mem_wmask0             (cache_mem_fwmask0   ), // WMASK#
+        .cache_mem_din0               (cache_mem_fdin0     ), // Write Data
                                                            
         .cache_refill_req             (cache_refill_req    ), // cache re-fill request
         .cache_prefill_req            (cache_prefill_req   ), // cache pre fill request
-	.cache_busy                   (cache_busy          )
+	.cache_busy                       (cache_busy          )
 
 
      );

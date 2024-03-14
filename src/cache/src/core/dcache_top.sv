@@ -510,26 +510,25 @@ begin
 	      state            <= PREFETCH_START;
 
          end else begin
-	    cpu_mem_resp      <= 2'b00;
-	    cache_mem_addr1   <= '0;
-	    cache_mem_csb1    <= 1'b1;
-
-	    if(cpu_mem_req && (cpu_mem_resp == 2'b00)) begin
-	        cpu_addr_l       <= cpu_mem_addr;
-	        cpu_wr_l         <= cpu_mem_cmd;
-	        cpu_width_l      <= cpu_mem_width;
-		mem2wb_data_l    <= mem2wb_data;
-	        cpu_be_l         <= ycr_conv_mem2wb_be(cpu_mem_width,cpu_mem_addr[1:0]);
-		prefetch_val     <= 1'b0;
-	        cpu_mem_req_ack  <= 1'b1;
-	        state            <= TAG_COMPARE;
-	     end else if(cfg_force_flush && !force_flush_done) begin
-		flush_loc_cnt    <= 'h0;
-		cache_mem_ptr    <= 'h0;
-	        state            <= CACHE_FLUSH_ACTION;
-	     end else if(!cfg_force_flush && force_flush_done) begin
-                 force_flush_done <= 1'b0; // Deassert flush done, cone config de-asserted
-	     end
+	         cpu_mem_resp      <= 2'b00;
+	         cache_mem_addr1   <= '0;
+	         cache_mem_csb1    <= 1'b1;
+	         if(cpu_mem_req && (cpu_mem_resp == 2'b00)) begin
+	              cpu_addr_l       <= cpu_mem_addr;
+	              cpu_wr_l         <= cpu_mem_cmd;
+	              cpu_width_l      <= cpu_mem_width;
+		          mem2wb_data_l    <= mem2wb_data;
+	              cpu_be_l         <= ycr_conv_mem2wb_be(cpu_mem_width,cpu_mem_addr[1:0]);
+		          prefetch_val     <= 1'b0;
+	              cpu_mem_req_ack  <= 1'b1;
+	              state            <= TAG_COMPARE;
+	          end else if(cfg_force_flush && !force_flush_done) begin
+		          flush_loc_cnt    <= 'h0;
+		          cache_mem_ptr    <= 'h0;
+	              state            <= CACHE_FLUSH_ACTION;
+	           end else if(!cfg_force_flush && force_flush_done) begin
+                       force_flush_done <= 1'b0; // Deassert flush done, cone config de-asserted
+	           end
 
 	 end
       end

@@ -111,6 +111,8 @@
 ////            Bug fix in Tap reset connectivity                         ////
 ////     2.10: 18 Sept 2023, Dinesh A                                     ////
 ////            uncahce memory range are created for imem and dmem space  ////
+////     2.10 - 13 Mar 2024, Dinesh A
+////          direct icache write allowed for RVC/Fence Instruction
 ////                                                                      ////
 ////                                                                      ////
 //////////////////////////////////////////////////////////////////////////////
@@ -461,6 +463,7 @@ logic                                              core_icache_cmd;
 logic [1:0]                                        core_icache_width;
 logic [`YCR_DMEM_AWIDTH-1:0]                       core_icache_addr;
 logic [2:0]                                        core_icache_bl;
+logic [`YCR_DMEM_DWIDTH-1:0]                       core_icache_wdata;
 logic [`YCR_DMEM_DWIDTH-1:0]                       core_icache_rdata;
 logic [1:0]                                        core_icache_resp;
 
@@ -611,6 +614,7 @@ ycr2_iconnect u_connect (
           .core_icache_width             (core_icache_width             ),
           .core_icache_addr              (core_icache_addr              ),
           .core_icache_bl                (core_icache_bl                ),
+          .core_icache_wdata             (core_icache_wdata             ),
           .core_icache_rdata             (core_icache_rdata             ),
           .core_icache_resp              (core_icache_resp              ),
         `endif // YCR_ICACHE_EN
@@ -757,6 +761,7 @@ ycr_intf u_intf(
     .core_icache_width         (core_icache_width         ),
     .core_icache_addr          (core_icache_addr          ), // IMEM address
     .core_icache_bl            (core_icache_bl            ), // IMEM burst size
+    .core_icache_wdata         (core_icache_wdata         ), // IMEM read data
     .core_icache_rdata         (core_icache_rdata         ), // IMEM read data
     .core_icache_resp          (core_icache_resp          ), // IMEM response
 

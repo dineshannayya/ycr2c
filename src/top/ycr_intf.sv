@@ -82,6 +82,7 @@ module ycr_intf (
     output   logic                          core_icache_req_ack       , // IMEM request acknowledge
     output   logic [`YCR_IMEM_DWIDTH-1:0]   core_icache_rdata         , // IMEM read data
     output   logic [1:0]                    core_icache_resp          , // IMEM response
+    input    logic [`YCR_IMEM_DWIDTH-1:0]   core_icache_wdata         , // IMEM write data
     input    logic                          core_icache_req           , // IMEM request
     input    logic                          core_icache_cmd           , // IMEM command
     input    logic [`YCR_IMEM_AWIDTH-1:0]   core_icache_addr          , // IMEM address
@@ -336,7 +337,9 @@ icache_top  #(.MEM_BL(`YCR_IMEM_BSIZE) )u_icache (
         .cpu_mem_req                 (core_icache_req),        // strobe/request
         .cpu_mem_addr                (core_icache_addr),       // address
         .cpu_mem_bl                  (core_icache_bl),       // address
-	.cpu_mem_width               (core_icache_width),
+	    .cpu_mem_width               (core_icache_width),
+	    .cpu_mem_cmd                 (core_icache_cmd),
+	    .cpu_mem_wdata               (core_icache_wdata),
 
         .cpu_mem_req_ack             (core_icache_req_ack),    // data input
         .cpu_mem_rdata               (core_icache_rdata),      // data input

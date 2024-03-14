@@ -155,6 +155,7 @@ module ycr2_iconnect (
     output   logic [1:0]                    core_icache_width           , // IMEM command
     output   logic [`YCR_IMEM_AWIDTH-1:0]   core_icache_addr          , // IMEM address
     output   logic [`YCR_IMEM_BSIZE-1:0]    core_icache_bl            , // IMEM burst size
+    output   logic [`YCR_IMEM_DWIDTH-1:0]   core_icache_wdata         , // IMEM write data - for rvc command
     input    logic [`YCR_IMEM_DWIDTH-1:0]   core_icache_rdata         , // IMEM read data
     input    logic [1:0]                    core_icache_resp          , // IMEM response
 
@@ -649,7 +650,7 @@ ycr2_cross_bar u_crossbar (
     .port1_width           (core_icache_width          ),
     .port1_addr            (core_icache_addr           ),
     .port1_bl              (core_icache_bl             ),
-    .port1_wdata           (                           ),
+    .port1_wdata           (core_icache_wdata          ),
     .port1_rdata           (core_icache_rdata          ),
     .port1_resp            (core_icache_resp           ),
 `else // YCR_ICACHE_EN
