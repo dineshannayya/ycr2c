@@ -54,7 +54,6 @@ module ycr_intf (
     input logic                             vssd1                     , // User area 1 digital ground
 `endif
 
-    input  logic   [3:0]                    cfg_wcska                 ,
     input  logic                            wbd_clk_int               ,
     output logic                            wbd_clk_skew              ,
 
@@ -62,7 +61,6 @@ module ycr_intf (
     // Control
     input   logic                           pwrup_rst_n               , // Power-Up Reset
     // From clock gen
-    input   logic [3:0]                     cfg_ccska                 ,
     input   logic                           core_clk_int              ,
     output  logic                           core_clk_skew             ,
     input   logic                           core_clk                  , // Core clock
@@ -273,29 +271,27 @@ assign wbd_dmem_cyc_o  = wbd_dmem_stb_o;
 //--------------------------------------------
 // RISCV clock skew control
 //--------------------------------------------
-clk_skew_adjust u_skew_core_clk
+ctech_clk_buf u_skew_core_clk
        (
 `ifdef USE_POWER_PINS
      .vccd1                   (vccd1                   ),// User area 1 1.8V supply
      .vssd1                   (vssd1                   ),// User area 1 digital ground
 `endif
-	    .clk_in               (core_clk_int            ), 
-	    .sel                  (cfg_ccska               ), 
-	    .clk_out              (core_clk_skew           ) 
+	    .A               (core_clk_int            ), 
+	    .X              (core_clk_skew           ) 
        );
 
 //--------------------------------------------
 // WB clock skew control
 //--------------------------------------------
-clk_skew_adjust u_skew_wb_clk
+ctech_clk_buf u_skew_wb_clk
        (
 `ifdef USE_POWER_PINS
      .vccd1                   (vccd1                   ),// User area 1 1.8V supply
      .vssd1                   (vssd1                   ),// User area 1 digital ground
 `endif
-	    .clk_in               (wbd_clk_int             ), 
-	    .sel                  (cfg_wcska               ), 
-	    .clk_out              (wbd_clk_skew            ) 
+	    .A               (wbd_clk_int             ), 
+	    .X               (wbd_clk_skew            ) 
        );
 //---------------------------------------------------------------------------------
 // To avoid core level power hook up, we have brought this signal inside, to

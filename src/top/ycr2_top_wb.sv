@@ -111,8 +111,16 @@
 ////            Bug fix in Tap reset connectivity                         ////
 ////     2.10: 18 Sept 2023, Dinesh A                                     ////
 ////            uncahce memory range are created for imem and dmem space  ////
-////     2.10 - 13 Mar 2024, Dinesh A
-////          direct icache write allowed for RVC/Fence Instruction
+////     2.11: 18 Jan 2024, Dinesh A                                      ////
+////          Bug Fix: timer roll over at 32 bit boundary                 ////
+////     2.12: 20 Jan 2024, Dinesh A                                      ////
+////          Bug Fix: For muti-core system need independent timer compare////
+////          Time Out Register                                           ////
+////          Bug Fix: Tap order changed to  <core1><core0>               ////
+////          Bug Fix: As tdo_en is active high, At top-level pinmux level////
+////                   this signal is inverted                            ////
+////     2.13 - 13 Mar 2024, Dinesh A                                     ////
+////          direct icache write allowed for RVC/Fence Instruction       ////
 ////                                                                      ////
 ////                                                                      ////
 //////////////////////////////////////////////////////////////////////////////
@@ -135,7 +143,6 @@ module ycr2_top_wb                      (
          input logic                          vssd1,    // User area 1 digital ground
 `endif
     // WB Clock Skew Control
-    input  logic   [3:0]                      cfg_wcska_riscv_intf,
     input  logic                              wbd_clk_int,
     output logic                              wbd_clk_skew ,
 
@@ -491,8 +498,9 @@ logic                                              core_clk_core1_skew;
 logic                                              cpu_clk_intf;
 
 //------------------------------------------------------------------------------
-// Tap will be daisy chained Tap Input => <core0> <core1> => Tap Out
+// Tap will be daisy chained Tap Input => <core1> <core0> => Tap Out
 //------------------------------------------------------------------------------
+logic                                              core1_tdo;
 logic                                              core0_tdo;
 
 
@@ -508,7 +516,6 @@ ycr2_iconnect u_connect (
           .cfg_bypass_dcache            (cfg_bypass_dcache            ), // 1 -> Bypass dcache
 
           // Core clock skew control
-          .cfg_ccska                    (cfg_ccska_riscv_icon         ),
           .core_clk_int                 (core_clk_int                 ),
           .core_clk_skew                (core_clk_icon_skew           ),
           .core_clk                     (core_clk_icon_skew           ), // Core clock
@@ -730,14 +737,12 @@ ycr_intf u_intf(
 `endif
 
      // Core clock skew control
-    .cfg_ccska                (cfg_ccska_riscv_intf      ),
     .core_clk_int             (cpu_clk_intf              ),
     .core_clk_skew            (core_clk_intf_skew        ),
     .core_clk                 (core_clk_intf_skew        ), // Core clock
 
 
      // WB  clock skew control
-    .cfg_wcska                (cfg_wcska_riscv_intf      ),
     .wbd_clk_int              (wbd_clk_int               ),
     .wbd_clk_skew             (wbd_clk_skew              ),
 
@@ -883,7 +888,6 @@ ycr_core_top i_core_top_0 (
           .rst_n                        (rst_n                        ),
           .cpu_rst_n                    (cpu_core_rst_n[0]            ),
           // Core clock skew control
-          .cfg_ccska                    (cfg_ccska_riscv_core0        ),
           .core_clk_int                 (core0_clk                    ),
           .core_clk_skew                (core_clk_core0_skew          ),
           .clk                          (core_clk_core0_skew          ),
@@ -911,9 +915,9 @@ ycr_core_top i_core_top_0 (
           .trst_n                       (trst_n                       ),
           .tapc_tck                     (tck                          ),
           .tapc_tms                     (tms                          ),
-          .tapc_tdi                     (tdi                          ),
-          .tapc_tdo                     (core0_tdo                    ),
-          .tapc_tdo_en                  (                             ),
+          .tapc_tdi                     (core1_tdo                    ),
+          .tapc_tdo                     (tdo                          ),
+          .tapc_tdo_en                  (tdo_en                       ),
 `endif // YCR_DBG_EN
 
    //---- inter-connect
@@ -957,7 +961,6 @@ ycr_core_top i_core_top_1 (
           .rst_n                        (rst_n                        ),
           .cpu_rst_n                    (cpu_core_rst_n[1]            ),
           // Core clock skew control
-          .cfg_ccska                    (cfg_ccska_riscv_core1        ),
           .core_clk_int                 (core1_clk                    ),
           .core_clk_skew                (core_clk_core1_skew          ),
           .clk                          (core_clk_core1_skew          ),
@@ -986,9 +989,9 @@ ycr_core_top i_core_top_1 (
           .trst_n                       (trst_n                       ),
           .tapc_tck                     (tck                          ),
           .tapc_tms                     (tms                          ),
-          .tapc_tdi                     (core0_tdo                    ), // daisy chain with core-0
-          .tapc_tdo                     (tdo                          ),
-          .tapc_tdo_en                  (tdo_en                       ),
+          .tapc_tdi                     (tdi                          ), // daisy chain with core-0
+          .tapc_tdo                     (core1_tdo                    ),
+          .tapc_tdo_en                  (                             ),
 `endif // YCR_DBG_EN
 
    //---- inter-connect

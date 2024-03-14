@@ -58,7 +58,6 @@ module ycr2_iconnect (
 `endif
 
     // Control
-    input   logic [3:0]                  cfg_ccska     ,
     input   logic                        core_clk_int  ,
     output  logic                        core_clk_skew ,
 
@@ -376,7 +375,7 @@ logic [23:0]                                       riscv_clk_cfg           ;
 logic [7:0]                                        riscv_sleep             ;
 logic [7:0]                                        riscv_wakeup            ;
 logic [63:0]                                       timer_val               ;                // Machine timer value
-logic                                              timer_irq               ;
+logic [3:0]                                        timer_irq               ;
 logic [`YCR_DMEM_AWIDTH-1:0]                       aes_dmem_addr_tmp       ;
 logic [`YCR_DMEM_AWIDTH-1:0]                       fpu_dmem_addr_tmp       ;
 
@@ -518,16 +517,16 @@ wire [63:0]  riscv_debug1 = {core1_imem_req,core1_imem_req_ack,core1_imem_resp[1
 assign cfg_dcache_force_flush   = riscv_glbl_cfg[0];
 
 assign core0_timer_val          = timer_val     ;                // Machine timer value
-assign core0_timer_irq          = timer_irq     ;
+assign core0_timer_irq          = timer_irq[0]  ;
 
 assign core1_timer_val          = timer_val     ;                // Machine timer value
-assign core1_timer_irq          = timer_irq     ;
+assign core1_timer_irq          = timer_irq[1]  ;
 
-//assign core2_timer_val          = timer_val     ;                // Machine timer value
-//assign core2_timer_irq          = timer_irq     ;
+//assign core2_timer_val          = timer_val   ;                // Machine timer value
+//assign core2_timer_irq          = timer_irq[2];
 //
-//assign core3_timer_val          = timer_val     ;                // Machine timer value
-//assign core3_timer_irq          = timer_irq     ;
+//assign core3_timer_val          = timer_val   ;                // Machine timer value
+//assign core3_timer_irq          = timer_irq[3];
 
 assign aes_dmem_addr            = aes_dmem_addr_tmp[6:0];
 assign fpu_dmem_addr            = fpu_dmem_addr_tmp[4:0];
@@ -543,15 +542,14 @@ ctech_mux2x1 u_cclk_cts  (.A0(core_clk_g), .A1(1'b0), .S(1'b0), .X(core_clk_cts)
 //--------------------------------------------
 // RISCV clock skew control
 //--------------------------------------------
-clk_skew_adjust u_skew_core_clk
+ctech_clk_buf u_skew_core_clk
        (
 `ifdef USE_POWER_PINS
      .vccd1                   (VPWR                    ),// User area 1 1.8V supply
      .vssd1                   (VGND                    ),// User area 1 digital ground
 `endif
-	    .clk_in               (core_clk_int            ), 
-	    .sel                  (cfg_ccska               ), 
-	    .clk_out              (core_clk_skew           ) 
+	    .A               (core_clk_int            ), 
+	    .X              (core_clk_skew           ) 
        );
 
 //-------------------------------------------------------------------------------
