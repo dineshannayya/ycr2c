@@ -573,11 +573,7 @@ ctech_mux2x1 u_cclk_cts  (.A0(core_clk_g), .A1(1'b0), .S(1'b0), .X(core_clk_cts)
 //--------------------------------------------
 ctech_clk_buf u_skew_core_clk
        (
-`ifdef USE_POWER_PINS
-     .vccd1                   (VPWR                    ),// User area 1 1.8V supply
-     .vssd1                   (VGND                    ),// User area 1 digital ground
-`endif
-	    .A              (core_clk_int            ), 
+	    .A               (core_clk_int            ), 
 	    .X              (core_clk_skew           ) 
        );
 
