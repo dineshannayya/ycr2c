@@ -1,129 +1,128 @@
-//////////////////////////////////////////////////////////////////////////////
-// SPDX-FileCopyrightText: 2021, Dinesh Annayya                           ////
-//                                                                        ////
-// Licenseunder the Apache License, Vers2.0(the "License");               ////
-// you maynot use this file except in compliance with the License.       ////
-// You may obtain a copy of the License at                                ////
-//                                                                        ////
-//      http://www.apache.org/licenses/LICENSE-2.0                        ////
-//                                                                        ////
-// Unless required by applicable law or agreed to in writing, software    ////
-// distributed under the License is distributed on an "AS IS" BASIS,      ////
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.///
-// See the License for the specific language governing permissions and    ////
-// limitations under the License.                                         ////
-// SPDX-License-Identifier: Apache-2.0                                    ////
-// SPDX-FileContributor: Dinesh Annayya <dinesha@opencores.org>           ////
-//////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////
-////                                                                      ////
-////  yifive Two core RISCV Top                                          ////
-////                                                                      ////
-////  This file is part of the yifive cores project                       ////
-////  https://github.com/dineshannayya/ycr2cr.git                           ////
-////                                                                      ////
-////  Description:                                                        ////
-////     integrated 2 Risc core with instruction/data memory & wb         ////
-////                                                                      ////
-////  To Do:                                                              ////
-////    nothing                                                           ////
-////                                                                      ////
-////  Authors:                                                            ////
-////     - syntacore, https://github.com/syntacore/scr1                   ////
-////     - Dinesh Annayya, dinesha@opencores.org                          ////
-////                                                                      ////
-////  CPU Memory Map:                                                     ////
-////            0x0000_0000 to 0x03FF_FFFF (64MB)  - ICACHE               ////
-////            0x0400_0000 to 0x0FFF_FFFF (64MB)  - IMEM (UNCACHE)       ////
-////            0x0800_0000 to 0x0BFF_FFFF (64MB)  - DCACHE               ////
-////            0x0C00_0000 to 0x0C47_FFFF (4.5MB) - DMEM(UCACHE)         ////
-////            0x0C48_0000 to 0x0C48_FFFF (64K)   - TCM SRAM             ////
-////            0x0C49_0000 to 0x0C49_000F (16)    - TIMER                ////
-////                                                                      ////
-////  Revision :                                                          ////
-////     0.0:    June 7, 2021, Dinesh A                                   ////
-////             wishbone integration                                     ////
-////     0.1:    June 17, 2021, Dinesh A                                  ////
-////             core and wishbone clock domain are seperated             ////
-////             Async fifo added in imem and dmem path                   ////
-////     0.2:    July 7, 2021, Dinesh A                                   ////
-////            64bit debug signal added                                  ////
-////     0.3:    Aug 23, 2021, Dinesh A                                   ////
-////            timer_irq connective bug fix                              ////
-////     1.0:   Jan 20, 2022, Dinesh A                                    ////
-////            128MB icache integrated in address range 0x0000_0000 to   ////
-////            0x07FF_FFFF                                               ////
-////     1.1:   Jan 22, 2022, Dinesh A                                    ////
-////            64MB dcache added in the address range 0x0800_0000 to     ////
-////            0x0BFF_FFFF                                               ////
-////     1.2:   Jan 30, 2022, Dinesh A                                    ////
-////            global register newly added in timer register to control  ////
-////            icache/dcache operation                                   ////
-////     1.3:   Feb 14, 2022, Dinesh A                                    ////
-////            Burst Access support added to imem prefetch logic         ////
-////            Burst Prefetech support only towards imem address range   ////
-////            0x0000_0000 to 0x07FFF_FFFF                               ////
-////     1.4:   Feb 20, 2022, Dinesh A                                    ////
-////            Total RISC CORE variable added in address at 0xFC1        //// 
-////     1.5:   Feb 21, 2022, Dinesh A                                    ////
-////            Two Risc core is integrated with common interface block   ////
-////     1.6:   Mar 14, 2022, Dinesh A                                    ////
-////            fuse_mhartid is internally tied                           ////
-////     1.8:   Mar 28, 2022, Dinesh A                                    ////
-////            Pipe line imem request generation is removed in           ////
-////            ycr_pipe_ifu.sv and when ever there there is clash between////
-////            current request and new change of addres request, new     ////
-////            address will be holded and updated only at the end of     ////
-////            pending transaction                                       ////
-////     1.9:   Mar 29, 2022, Dinesh A                                    ////
-////            To break the timing path, once cycle gap assumed between  ////
-////            core request to slave ack, following files are modified   ////
-////     	    src/cache/src/core/dcache_top.sv                      ////
-////     	    src/cache/src/core/icache_top.sv                      ////
-////     	    src/core/pipeline/ycr_pipe_ifu.sv                     ////
-////     	    src/top/ycr_dmem_router.sv                            ////
-////     	    src/top/ycr_dmem_wb.sv                                ////
-////     	    src/top/ycr_tcm.sv                                    ////
-////            Synth and sta script are clean-up                         ////
-////     2.0:  April 1, 2022, Dinesh A                                    ////
-////           As sky130 SRAM timining library are not accurate, added    ////
-////           Write interface lanuch phase selection                     ////  
-////     2.1:  May 23, 2022, Dinesh A                                     ////
-////           To improve the timing, request re-timing are added at      ////
-////           iconnect block, In MPW-6 shows Riscv core meeting timing   ////
-////           for 100Mhz                                                 ////
-////     2.2:  June 3, 2022, Dinesh A                                     ////
-////           Replaced DFFRAM with SRAM Memory                           ////
-////     2.3:  June 12, 2022, Dinesh A                                    ////
-////           icache and dcache bypass config added                      ////
-////     2.4:  Aug 20, 2022, Dinesh A                                     ////
-////           Increase total external interrupt from 16 to 32            ////
-////     2.5:  Nov 7, 2022, Dinesh A                                      ////
-////           Added Interface to integrate AES core                      ////
-////           Added Interface to integrate FPU core                      ////
-////     2.6:  Mar 4, 2023, Dinesh A                                      ////
-////           Tap access is enabled                                      ////
-////     2.7:  Mar 10, 2023, Dinesh A                                     ////
-////            all cpu clock is branch are routed through iconnect       ////
-////     2.8:  May 1, 2023, Dinesh A                                      ////
-////           cpu clock gating feature added                             ////
-////     2.9:  June 1, 2023, Dinesh A                                     ////
-////            Bug fix in Tap reset connectivity                         ////
-////     2.10: 18 Sept 2023, Dinesh A                                     ////
-////            uncahce memory range are created for imem and dmem space  ////
-////     2.11: 18 Jan 2024, Dinesh A                                      ////
-////          Bug Fix: timer roll over at 32 bit boundary                 ////
-////     2.12: 20 Jan 2024, Dinesh A                                      ////
-////          Bug Fix: For muti-core system need independent timer compare////
-////          Time Out Register                                           ////
-////          Bug Fix: Tap order changed to  <core1><core0>               ////
-////          Bug Fix: As tdo_en is active high, At top-level pinmux level////
-////                   this signal is inverted                            ////
-////     2.13 - 13 Mar 2024, Dinesh A                                     ////
-////          direct icache write allowed for RVC/Fence Instruction       ////
-////                                                                      ////
-////                                                                      ////
-//////////////////////////////////////////////////////////////////////////////
+/*****************************************************************************************************
+ * Copyright (c) 2024 SiPlusPlus Semiconductor
+ *
+ * FileContributor: Dinesh Annayya <dinesha@opencores.org>                       
+ * FileContributor: Dinesh Annayya <dinesh@siplusplus.com>                       
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ ***************************************************************************************************/
+/****************************************************************************************************
+      yifive Two core RISCV Top                                           
+                                                                          
+                                                                          
+      Description:                                                        
+         integrated 2 Risc core with instruction/data memory & wb         
+                                                                          
+      To Do:                                                              
+        nothing                                                           
+                                                                          
+      Authors:                                                            
+          - syntacore, https://github.com/syntacore/scr1                   
+          - Dinesh Annayya <dinesha@opencores.org>               
+          - Dinesh Annayya <dinesh@siplusplus.com>               
+                                                                          
+      CPU Memory Map:                                                     
+                0x0000_0000 to 0x03FF_FFFF (64MB)  - ICACHE               
+                0x0400_0000 to 0x0FFF_FFFF (64MB)  - IMEM (UNCACHE)       
+                0x0800_0000 to 0x0BFF_FFFF (64MB)  - DCACHE               
+                0x0C00_0000 to 0x0C47_FFFF (4.5MB) - DMEM(UCACHE)         
+                0x0C48_0000 to 0x0C48_FFFF (64K)   - TCM SRAM             
+                0x0C49_0000 to 0x0C49_000F (16)    - TIMER                
+                                                                          
+      Revision :                                                          
+         0.0:    June 7, 2021, Dinesh A                                   
+                 wishbone integration                                     
+         0.1:    June 17, 2021, Dinesh A                                  
+                 core and wishbone clock domain are seperated             
+                 Async fifo added in imem and dmem path                   
+         0.2:    July 7, 2021, Dinesh A                                   
+                64bit debug signal added                                  
+         0.3:    Aug 23, 2021, Dinesh A                                   
+                timer_irq connective bug fix                              
+         1.0:   Jan 20, 2022, Dinesh A                                    
+                128MB icache integrated in address range 0x0000_0000 to   
+                0x07FF_FFFF                                               
+         1.1:   Jan 22, 2022, Dinesh A                                    
+                64MB dcache added in the address range 0x0800_0000 to     
+                0x0BFF_FFFF                                               
+         1.2:   Jan 30, 2022, Dinesh A                                    
+                global register newly added in timer register to control  
+                icache/dcache operation                                   
+         1.3:   Feb 14, 2022, Dinesh A                                    
+                Burst Access support added to imem prefetch logic         
+                Burst Prefetech support only towards imem address range   
+                0x0000_0000 to 0x07FFF_FFFF                               
+         1.4:   Feb 20, 2022, Dinesh A                                    
+                Total RISC CORE variable added in address at 0xFC1         
+         1.5:   Feb 21, 2022, Dinesh A                                    
+                Two Risc core is integrated with common interface block   
+         1.6:   Mar 14, 2022, Dinesh A                                    
+                fuse_mhartid is internally tied                           
+         1.8:   Mar 28, 2022, Dinesh A                                    
+                Pipe line imem request generation is removed in           
+                ycr_pipe_ifu.sv and when ever there there is clash between
+                current request and new change of addres request, new     
+                address will be holded and updated only at the end of     
+                pending transaction                                       
+         1.9:   Mar 29, 2022, Dinesh A                                    
+                To break the timing path, once cycle gap assumed between  
+                core request to slave ack, following files are modified   
+         	    src/cache/src/core/dcache_top.sv                      
+         	    src/cache/src/core/icache_top.sv                      
+         	    src/core/pipeline/ycr_pipe_ifu.sv                     
+         	    src/top/ycr_dmem_router.sv                            
+         	    src/top/ycr_dmem_wb.sv                                
+         	    src/top/ycr_tcm.sv                                    
+                Synth and sta script are clean-up                         
+         2.0:  April 1, 2022, Dinesh A                                    
+               As sky130 SRAM timining library are not accurate, added    
+               Write interface lanuch phase selection                       
+         2.1:  May 23, 2022, Dinesh A                                     
+               To improve the timing, request re-timing are added at      
+               iconnect block, In MPW-6 shows Riscv core meeting timing   
+               for 100Mhz                                                 
+         2.2:  June 3, 2022, Dinesh A                                     
+               Replaced DFFRAM with SRAM Memory                           
+         2.3:  June 12, 2022, Dinesh A                                    
+               icache and dcache bypass config added                      
+         2.4:  Aug 20, 2022, Dinesh A                                     
+               Increase total external interrupt from 16 to 32            
+         2.5:  Nov 7, 2022, Dinesh A                                      
+               Added Interface to integrate AES core                      
+               Added Interface to integrate FPU core                      
+         2.6:  Mar 4, 2023, Dinesh A                                      
+               Tap access is enabled                                      
+         2.7:  Mar 10, 2023, Dinesh A                                     
+                all cpu clock is branch are routed through iconnect       
+         2.8:  May 1, 2023, Dinesh A                                      
+               cpu clock gating feature added                             
+         2.9:  June 1, 2023, Dinesh A                                     
+                Bug fix in Tap reset connectivity                         
+         2.10: 18 Sept 2023, Dinesh A                                     
+                uncahce memory range are created for imem and dmem space  
+         2.11: 18 Jan 2024, Dinesh A                                      
+              Bug Fix: timer roll over at 32 bit boundary                 
+         2.12: 20 Jan 2024, Dinesh A                                      
+              Bug Fix: For muti-core system need independent timer compare
+              Time Out Register                                           
+              Bug Fix: Tap order changed to  <core1><core0>               
+              Bug Fix: As tdo_en is active high, At top-level pinmux level
+                       this signal is inverted                            
+         2.13 - 13 Mar 2024, Dinesh A                                     
+             direct icache write allowed for RVC/Fence Instruction       
+                                                                          
+ ***************************************************************************************************/
+                                                                          
 
 `include "ycr_arch_description.svh"
 `include "ycr_memif.svh"
@@ -167,8 +166,13 @@ module ycr2_top_wb                      (
     // input   logic                          test_rst_n,             // Test mode's reset - unused
     input   logic                             rtc_clk,                // Real-time clock
 `ifdef YCR_SERIAL_DEBUG
-    output  logic                             serial_riscv_debug_sync,
-    output  logic                             serial_riscv_debug_data,
+    input logic                               dbg_clkin    , // debug clock, like uart baud clock
+    input logic                               dbg_syncin   , // Sync for offset computation 
+    input logic                               dbg_si       , // previous dbg data
+
+    output logic                              dbg_clkout   , // debug clock, like uart baud clock
+    output logic                              dbg_syncout  , // Sync for offset computation 
+    output logic                              dbg_so       ,
 `else
     output  logic [63:0]                      riscv_debug,
 `endif
@@ -527,8 +531,14 @@ ycr2_iconnect u_connect (
           .core_debug_sel               (core_debug_sel               ),
 
 `ifdef YCR_SERIAL_DEBUG
-          .serial_riscv_debug_sync      (serial_riscv_debug_sync      ),
-          .serial_riscv_debug_data      (serial_riscv_debug_data      ),
+         .dbg_clkin                     (dbg_clkin                    ), // debug clock, like uart baud clock
+         .dbg_syncin                    (dbg_syncin                   ), // Sync for offset computation 
+         .dbg_si                        (dbg_si                       ), // previous dbg data
+
+
+         .dbg_clkout                    (dbg_clkout                   ), // debug clock, like uart baud clock
+         .dbg_syncout                   (dbg_syncout                  ), // Sync for offset computation 
+         .dbg_so                        (dbg_so                       ),
 `else
 	      .riscv_debug                  (riscv_debug                  ),
 `endif

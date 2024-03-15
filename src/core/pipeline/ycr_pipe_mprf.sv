@@ -1,47 +1,46 @@
-//////////////////////////////////////////////////////////////////////////////
-// SPDX-FileCopyrightText: 2021, Dinesh Annayya                           ////
-//                                                                        ////
-// Licensed under the Apache License, Version 2.0 (the "License");        ////
-// you may not use this file except in compliance with the License.       ////
-// You may obtain a copy of the License at                                ////
-//                                                                        ////
-//      http://www.apache.org/licenses/LICENSE-2.0                        ////
-//                                                                        ////
-// Unless required by applicable law or agreed to in writing, software    ////
-// distributed under the License is distributed on an "AS IS" BASIS,      ////
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.///
-// See the License for the specific language governing permissions and    ////
-// limitations under the License.                                         ////
-// SPDX-License-Identifier: Apache-2.0                                    ////
-// SPDX-FileContributor: Dinesh Annayya <dinesha@opencores.org>           ////
-//////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////
-////                                                                      ////
-////  yifive Multi Port Register File (MPRF)                              ////
-////                                                                      ////
-////  This file is part of the yifive cores project                       ////
-////  https://github.com/dineshannayya/ycr.git                           ////
-////                                                                      ////
-////  Description:                                                        ////
-////     Multi Port Register File (MPRF)                                  ////
-////                                                                      ////
-////  To Do:                                                              ////
-////    nothing                                                           ////
-////                                                                      ////
-////  Author(s):                                                          ////
-////     - syntacore, https://github.com/syntacore/scr1                   ////
-////     - Dinesh Annayya, dinesha@opencores.org                          ////
-////                                                                      ////
-////  Revision :                                                          ////
-////     v0:    Jan 2021- Initial version picked from                     ////
-////            https://github.com/syntacore/scr1                         ////
-////     v1:    June 7, 2021, Dinesh A                                    ////
-////             opentool(iverilog/yosys) related cleanup                 ////
-////     v2:     June 7, 2021, Dinesh A                                   ////
-////               added additional stage FF to break timing path         ////
-////               additional define YCRC1_MPRF_STAGE added               ////
-////                                                                      ////
-//////////////////////////////////////////////////////////////////////////////
+/*****************************************************************************************************
+ * Copyright (c) 2024 SiPlusPlus Semiconductor
+ *
+ * FileContributor: Dinesh Annayya <dinesha@opencores.org>                       
+ * FileContributor: Dinesh Annayya <dinesh@siplusplus.com>                       
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ ***************************************************************************************************/
+/****************************************************************************************************
+      yifive Multi Port Register File (MPRF)                              
+                                                                          
+                                                                          
+      Description:                                                        
+         Multi Port Register File (MPRF)                                  
+                                                                          
+      To Do:                                                              
+        nothing                                                           
+                                                                          
+  Author(s):                                                  
+          - syntacore, https://github.com/syntacore/scr1                   
+          - Dinesh Annayya <dinesha@opencores.org>               
+          - Dinesh Annayya <dinesh@siplusplus.com>               
+                                                                          
+      Revision :                                                          
+         v0:    Jan 2021- Initial version picked from                     
+                https://github.com/syntacore/scr1                         
+         v1:    June 7, 2021, Dinesh A                                    
+                 opentool(iverilog/yosys) related cleanup                 
+         v2:     June 7, 2021, Dinesh A                                   
+                   added additional stage FF to break timing path         
+                   additional define YCRC1_MPRF_STAGE added               
+                                                                          
+ ***************************************************************************************************/
 
 `include "ycr_arch_description.svh"
 `include "ycr_arch_types.svh"
@@ -62,7 +61,10 @@ module ycr_pipe_mprf (
     input   logic [`YCR_MPRF_AWIDTH-1:0]       exu2mprf_rd_addr_i,         // MPRF rd write address
     input   logic [`YCR_XLEN-1:0]              exu2mprf_rd_data_i,         // MPRF rd write data
 
-    output  logic [`YCR_XLEN-1:0]              func_return_val    // Debug Purpose
+   // Debug Purpose
+    output  logic [`YCR_XLEN-1:0]              func_return_val,    
+    output  logic [`YCR_XLEN-1:0]              stack_ptr_val,        
+    output  logic [`YCR_XLEN-1:0]              glbl_ptr_val        
 );
 
 //-------------------------------------------------------------------------------
@@ -123,7 +125,14 @@ logic   [`YCR_XLEN-1:0]    mprf_int2  [1:`YCR_MPRF_SIZE-1];
 logic [`YCR_XLEN-1:0]      mprf_int [1:`YCR_MPRF_SIZE-1];
 `endif
 
-// Location[0] hold the function return value
+// Important Location Decoding
+// 2     - SP
+// 3     - GP
+// 4     - Thread Pointer
+// 11-10 - Functional Argument/return values
+// 17-12 - Functional Arguments
+assign  stack_ptr_val = mprf_int[2];
+assign  glbl_ptr_val  = mprf_int[3];
 assign  func_return_val = mprf_int[10];
 
 //------------------------------------------------------------------------------

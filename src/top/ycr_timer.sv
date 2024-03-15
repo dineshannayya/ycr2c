@@ -1,51 +1,50 @@
-//////////////////////////////////////////////////////////////////////////////
-// SPDX-FileCopyrightText: 2021, Dinesh Annayya                           ////
-//                                                                        ////
-// Licensed under the Apache License, Version 2.0 (the "License");        ////
-// you may not use this file except in compliance with the License.       ////
-// You may obtain a copy of the License at                                ////
-//                                                                        ////
-//      http://www.apache.org/licenses/LICENSE-2.0                        ////
-//                                                                        ////
-// Unless required by applicable law or agreed to in writing, software    ////
-// distributed under the License is distributed on an "AS IS" BASIS,      ////
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.///
-// See the License for the specific language governing permissions and    ////
-// limitations under the License.                                         ////
-// SPDX-License-Identifier: Apache-2.0                                    ////
-// SPDX-FileContributor: Dinesh Annayya <dinesha@opencores.org>           ////
-//////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////
-////                                                                      ////
-////  yifive Memory-mapped Timer                                          ////
-////                                                                      ////
-////  This file is part of the yifive cores project                       ////
-////  https://github.com/dineshannayya/ycr.git                           ////
-////                                                                      ////
-////  Description:                                                        ////
-////     Memory-mapped Timer                                              ////
-////                                                                      ////
-////  To Do:                                                              ////
-////    nothing                                                           ////
-////                                                                      ////
-////  Author(s):                                                          ////
-////     - syntacore, https://github.com/syntacore/scr1                   ////
-////     - Dinesh Annayya, dinesha@opencores.org                          ////
-////                                                                      ////
-////  Revision :                                                          ////
-////     v0:    Jan 2021- Initial version picked from                     ////
-////            https://github.com/syntacore/scr1                         ////
-////     v1:    June 7, 2021, Dinesh A                                    ////
-////             opentool(iverilog/yosys) related cleanup                 ////
-////     v2:    18 July 2021 - Dinesh A                                   ////
-////          A.To break the timing path, input and output path are       ////
-////             registered                                               ////
-////          B.Spilt the 64 bit adder into two 32 bit adder with         ////
-////            taking care ofoverflow                                    ////
-////     v3:    18 Jan 2024 - Dinesh A                                    ////
-////          Bug Fix: timer roll over at 32 bit boundary                 ////
-////                                                                      ////
-//////////////////////////////////////////////////////////////////////////////
+/*****************************************************************************************************
+ * Copyright (c) 2024 SiPlusPlus Semiconductor
+ *
+ * FileContributor: Dinesh Annayya <dinesha@opencores.org>                       
+ * FileContributor: Dinesh Annayya <dinesh@siplusplus.com>                       
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ ***************************************************************************************************/
+/****************************************************************************************************
+      yifive Memory-mapped Timer                                          
+                                                                          
+                                                                          
+      Description:                                                        
+         Memory-mapped Timer                                              
+                                                                          
+      To Do:                                                              
+        nothing                                                           
+                                                                          
+      Author(s):                                                          
+          - syntacore, https://github.com/syntacore/scr1                   
+          - Dinesh Annayya <dinesha@opencores.org>               
+          - Dinesh Annayya <dinesh@siplusplus.com>               
+                                                                          
+      Revision :                                                          
+         v0:    Jan 2021- Initial version picked from                     
+                https://github.com/syntacore/scr1                         
+         v1:    June 7, 2021, Dinesh A                                    
+                 opentool(iverilog/yosys) related cleanup                 
+         v2:    18 July 2021 - Dinesh A                                   
+              A.To break the timing path, input and output path are       
+                 registered                                               
+              B.Spilt the 64 bit adder into two 32 bit adder with         
+                taking care ofoverflow                                    
+         v3:    18 Jan 2024 - Dinesh A                                    
+              Bug Fix: timer roll over at 32 bit boundary                 
+                                                                          
+ ***************************************************************************************************/
 
 
 `include "ycr_arch_description.svh"
@@ -71,6 +70,8 @@ module ycr_timer (
     output  logic [63:0]                            timer_val,
     output  logic [3:0]                             timer_irq,
 
+    output  logic [3:0]                             soft_irq,
+
     output  logic [31:0]                            riscv_glbl_cfg,
     output  logic [23:0]                            riscv_clk_cfg,
     output  logic [7:0]                             riscv_sleep,    // riscv core sleep level signal
@@ -80,26 +81,33 @@ module ycr_timer (
 //-------------------------------------------------------------------------------
 // Local parameters declaration
 //-------------------------------------------------------------------------------
-localparam int unsigned YCR_TIMER_ADDR_WIDTH                               = 6;
-localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_CONTROL             = 6'h0;
-localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_DIVIDER             = 6'h4;
-localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMELO             = 6'h8;
-localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMEHI             = 6'hC;
+localparam int unsigned YCR_TIMER_ADDR_WIDTH                               = 8;
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_CONTROL             = 8'h0;
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_DIVIDER             = 8'h4;
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMELO             = 8'h8;
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMEHI             = 8'hC;
 
-localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMP0LO          = 6'h10;
-localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMP0HI          = 6'h14;
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMP0LO          = 8'h10;
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMP0HI          = 8'h14;
 
-localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMP1LO          = 6'h18;
-localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMP1HI          = 6'h1C;
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMP1LO          = 8'h18;
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMP1HI          = 8'h1C;
 
-localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMP2LO          = 6'h20;
-localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMP2HI          = 6'h24;
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMP2LO          = 8'h20;
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMP2HI          = 8'h24;
 
-localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMP3LO          = 6'h28;
-localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMP3HI          = 6'h2C;
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMP3LO          = 8'h28;
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_TIMER_MTIMECMP3HI          = 8'h2C;
 
-localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_GLBL_CONTROL              = 6'h30;
-localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_CLK_CONTROL               = 6'h34;
+// MSIP register for inter processor software interrupt generation
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_MSIP_HART0                 = 8'h30;
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_MSIP_HART1                 = 8'h34;
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_MSIP_HART2                 = 8'h38;
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_MSIP_HART3                 = 8'h3C;
+
+
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_GLBL_CONTROL              = 8'h40;
+localparam logic [YCR_TIMER_ADDR_WIDTH-1:0] YCR_CLK_CONTROL               = 8'h44;
 
 localparam int unsigned YCR_TIMER_CONTROL_EN_OFFSET                        = 0;
 localparam int unsigned YCR_TIMER_CONTROL_CLKSRC_OFFSET                    = 1;
@@ -124,6 +132,8 @@ logic [63:0]                                        mtimecmp3_new;
 logic [3:0]                                         mtimecmplo_up;
 logic [3:0]                                         mtimecmphi_up;
 logic [3:0]                                         time_cmp_flag;
+
+logic [3:0]                                         msip_hart_up;
 
 logic                                               timer_en;
 logic                                               timer_clksrc_rtc;
@@ -367,6 +377,54 @@ always_ff @(posedge clk, negedge rst_n) begin
     end
 end
 
+
+//-------------------------------------------------
+// Software IRQ generation per core
+//------------------------------------------------
+
+generic_register #(1,0  ) u_msip_hart0 (
+	      .we            (msip_hart_up[0]     ),
+	      .data_in       (dmem_wdata[0]    ),
+	      .reset_n       (rst_n            ),
+	      .clk           (clk              ),
+	      
+	      //List of Outs
+	      .data_out      (soft_irq[0]      )
+          );
+
+generic_register #(1,0  ) u_msip_hart1 (
+	      .we            (msip_hart_up[1]     ),
+	      .data_in       (dmem_wdata[0]    ),
+	      .reset_n       (rst_n            ),
+	      .clk           (clk              ),
+	      
+	      //List of Outs
+	      .data_out      (soft_irq[1]      )
+          );
+
+generic_register #(1,0  ) u_msip_hart2  (
+	      .we            (msip_hart_up[2]     ),
+	      .data_in       (dmem_wdata[0]    ),
+	      .reset_n       (rst_n            ),
+	      .clk           (clk              ),
+	      
+	      //List of Outs
+	      .data_out      (soft_irq[2]      )
+          );
+
+generic_register #(1,0  ) u_msip_hart3  (
+	      .we            (msip_hart_up[3]  ),
+	      .data_in       (dmem_wdata[0]    ),
+	      .reset_n       (rst_n            ),
+	      .clk           (clk              ),
+	      
+	      //List of Outs
+	      .data_out      (soft_irq[3]      )
+          );
+
+
+//------------------------------------------
+//   Global Register
 //---------------------------------------------
 
 always_ff @(posedge clk, negedge rst_n) begin
@@ -479,8 +537,7 @@ always_ff @(negedge rst_n, posedge clk) begin
        dmem_cmd_ff  <= '0;
        dmem_addr_ff <= '0;
     end else begin
-       dmem_req_valid <=  (dmem_req) && (dmem_req_ack == 0) &&  (dmem_width == YCR_MEM_WIDTH_WORD) & (~|dmem_addr[1:0]) &
-                          (dmem_addr[YCR_TIMER_ADDR_WIDTH-1:2] <= YCR_CLK_CONTROL[YCR_TIMER_ADDR_WIDTH-1:2]);
+       dmem_req_valid <=  (dmem_req) && (dmem_req_ack == 0) && (dmem_addr[YCR_TIMER_ADDR_WIDTH-1:2] <= YCR_CLK_CONTROL[YCR_TIMER_ADDR_WIDTH-1:2]);
        dmem_req_ack   <= dmem_req & (dmem_req_ack ==0);
        dmem_cmd_ff    <= dmem_cmd;
        dmem_addr_ff   <= dmem_addr[YCR_TIMER_ADDR_WIDTH-1:0];
@@ -513,6 +570,11 @@ always_ff @(negedge rst_n, posedge clk) begin
                         YCR_TIMER_MTIMECMP3LO   : dmem_rdata    <= mtimecmp3_reg[31:0];
                         YCR_TIMER_MTIMECMP3HI   : dmem_rdata    <= mtimecmp3_reg[63:32];
 
+                        YCR_MSIP_HART0          : dmem_rdata    <= {31'h0, soft_irq[0]};
+                        YCR_MSIP_HART1          : dmem_rdata    <= {31'h0, soft_irq[1]};
+                        YCR_MSIP_HART2          : dmem_rdata    <= {31'h0, soft_irq[2]};
+                        YCR_MSIP_HART3          : dmem_rdata    <= {31'h0, soft_irq[3]};
+
                         YCR_GLBL_CONTROL        : dmem_rdata    <= riscv_glbl_cfg;
                         YCR_CLK_CONTROL         : dmem_rdata    <= {riscv_sleep,riscv_clk_cfg};
                         default                 : begin end
@@ -530,10 +592,11 @@ always_comb begin
     divider_up      = 1'b0;
     mtimelo_up      = 1'b0;
     mtimehi_up      = 1'b0;
-    mtimecmplo_up   = 1'b0;
-    mtimecmphi_up   = 1'b0;
+    mtimecmplo_up   = 'h0;
+    mtimecmphi_up   = 'h0;
     glbl_cfg_up     = 1'b0;
     clk_cfg_up      = 1'b0;
+    msip_hart_up    = 'h0;
     if (dmem_req_valid & (dmem_cmd_ff == YCR_MEM_CMD_WR)) begin
         case (dmem_addr_ff)
             YCR_TIMER_CONTROL      : control_up      = 1'b1;
@@ -548,6 +611,12 @@ always_comb begin
             YCR_TIMER_MTIMECMP2HI  : mtimecmphi_up[2]  = 1'b1;
             YCR_TIMER_MTIMECMP3LO  : mtimecmplo_up[3]  = 1'b1;
             YCR_TIMER_MTIMECMP3HI  : mtimecmphi_up[3]  = 1'b1;
+
+            YCR_MSIP_HART0         : msip_hart_up[0]   = 1'b1;
+            YCR_MSIP_HART1         : msip_hart_up[1]   = 1'b1;
+            YCR_MSIP_HART2         : msip_hart_up[2]   = 1'b1;
+            YCR_MSIP_HART3         : msip_hart_up[3]   = 1'b1;
+
 	        YCR_GLBL_CONTROL       : glbl_cfg_up     = 1'b1;
 	        YCR_CLK_CONTROL        : clk_cfg_up      = 1'b1;
             default                : begin end

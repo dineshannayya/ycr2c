@@ -1,44 +1,43 @@
-//////////////////////////////////////////////////////////////////////////////
-// SPDX-FileCopyrightText: 2021, Dinesh Annayya                           ////
-//                                                                        ////
-// Licensed under the Apache License, Version 2.0 (the "License");        ////
-// you may not use this file except in compliance with the License.       ////
-// You may obtain a copy of the License at                                ////
-//                                                                        ////
-//      http://www.apache.org/licenses/LICENSE-2.0                        ////
-//                                                                        ////
-// Unless required by applicable law or agreed to in writing, software    ////
-// distributed under the License is distributed on an "AS IS" BASIS,      ////
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.///
-// See the License for the specific language governing permissions and    ////
-// limitations under the License.                                         ////
-// SPDX-License-Identifier: Apache-2.0                                    ////
-// SPDX-FileContributor: Dinesh Annayya <dinesha@opencores.org>           ////
-//////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////
-////                                                                      ////
-////  yifive multi-core interface block                                   ////
-////                                                                      ////
-////  This file is part of the yifive cores project                       ////
-////  https://github.com/dineshannayya/ycr2c.git                          ////
-////                                                                      ////
-////  Description:                                                        ////
-////     connect the multi-core to common icache/dcache/tcm/timer         ////
-////     Instruction memory router                                        ////
-////                                                                      ////
-////  To Do:                                                              ////
-////    nothing                                                           ////
-////                                                                      ////
-////  Author(s):                                                          ////
-////      - Dinesh Annayya, dinesha@opencores.org                         ////
-////                                                                      ////
-////  Revision :                                                          ////
-////     v0:    Feb 21, 2021, Dinesh A                                    ////
-////             Initial version                                          ////
-////     v1:    Mar 10, 2023, Dinesh A                                    ////
-////            all cpu clock is branch are routed through iconnect       ////
-////                                                                      ////
-//////////////////////////////////////////////////////////////////////////////
+/*****************************************************************************************************
+ * Copyright (c) 2024 SiPlusPlus Semiconductor
+ *
+ * FileContributor: Dinesh Annayya <dinesha@opencores.org>                       
+ * FileContributor: Dinesh Annayya <dinesh@siplusplus.com>                       
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ ***************************************************************************************************/
+/****************************************************************************************************
+      yifive multi-core interface block                                   
+                                                                          
+                                                                          
+      Description:                                                        
+         connect the multi-core to common icache/dcache/tcm/timer         
+         Instruction memory router                                        
+                                                                          
+      To Do:                                                              
+        nothing                                                           
+                                                                          
+      Author(s):                                                          
+          - Dinesh Annayya <dinesha@opencores.org>               
+          - Dinesh Annayya <dinesh@siplusplus.com>               
+                                                                          
+      Revision :                                                          
+         v0:    Feb 21, 2021, Dinesh A                                    
+                 Initial version                                          
+         v1:    Mar 10, 2023, Dinesh A                                    
+                all cpu clock is branch are routed through iconnect       
+                                                                          
+ ***************************************************************************************************/
 
 `include "ycr_arch_description.svh"
 `include "ycr_memif.svh"
@@ -71,8 +70,14 @@ module ycr2_iconnect (
 
     input   logic [1:0]                  core_debug_sel,
 `ifdef YCR_SERIAL_DEBUG
-    output  logic                        serial_riscv_debug_sync,
-    output  logic                        serial_riscv_debug_data,
+    input logic                          dbg_clkin  , // debug clock, like uart baud clock
+    input logic                          dbg_syncin , // Sync for offset computation 
+    input logic                          dbg_si     , // previous dbg data
+   
+    output logic                         dbg_clkout  , // debug clock, like uart baud clock
+    output logic                         dbg_syncout , // Sync for offset computation 
+    output logic                         dbg_so     ,
+
 `else
     output  logic [63:0]                 riscv_debug,
 `endif
@@ -323,6 +328,8 @@ logic [`YCR_DMEM_DWIDTH-1:0]                       timer_dmem_wdata;
 logic [`YCR_DMEM_DWIDTH-1:0]                       timer_dmem_rdata;
 logic [1:0]                                        timer_dmem_resp;
 
+logic  [3:0]                                        core_soft_irq;         // Software generated interrupt request
+
 `ifndef YCR_TCM_MEM_8KB
     // SRAM-1 PORT-0
     logic                                          sram1_clk0;
@@ -435,22 +442,6 @@ logic   [31:0]                    sram3_din0_int       ; // Write Data
 logic                             sram3_csb1_int       ; // CS#
 logic  [8:0]                      sram3_addr1_int      ; // Address
 
-//---------------------------------------
-// change debug from from parallel to serial format
-
-`ifdef YCR_SERIAL_DEBUG
-logic [63:0]                 riscv_debug;
-
-ycr_serial_debug  #(.DEBUG_WD(64)) u_debug(
-
-         .reset_n             (cpu_intf_rst_n),
-         .clk                 (core_clk),
-         .debug_bus           (riscv_debug),
-         .serial_debug_data   (serial_riscv_debug_data),
-         .serial_debug_sync   (serial_riscv_debug_sync) 
-       );
-
-`endif
 
 //---------------------------------------------------------------------------------
 // Providing cpu clock feed through iconnect for better physical routing
@@ -492,9 +483,9 @@ ycr_cclk_ctrl_top u_cclk_gate (
 // To improve the physical routing irq signal are buffer inside the block
 // --------------------------------------------------------------------------------
 assign core0_irq_lines  =  core_irq_lines_i         ; // External interrupt request lines
-assign core0_irq_soft   =  core_irq_soft_i          ; // Software generated interrupt request
+assign core0_irq_soft   =  core_soft_irq[0]         ; // Software generated interrupt request
 assign core1_irq_lines  =  core_irq_lines_i         ; // External interrupt request lines
-assign core1_irq_soft   =  core_irq_soft_i          ; // Software generated interrupt request
+assign core1_irq_soft   =  core_soft_irq[1]         ; // Software generated interrupt request
 //---------------------------------------------------------------------------------
 // To avoid core level power hook up, we have brought this signal inside, to
 // avoid any cell at digital core level
@@ -513,6 +504,44 @@ wire [63:0]  riscv_debug1 = {core1_imem_req,core1_imem_req_ack,core1_imem_resp[1
 	                     core_dcache_req,core_dcache_req_ack, tcm_dmem_req, 
 		             core1_debug };
 
+//---------------------------------------
+// change debug from from parallel to serial format
+
+`ifdef YCR_SERIAL_DEBUG
+
+logic dbg_clkout_c0,dbg_syncout_c0,dbg_so_c0;
+
+dbg_port  #(.DEBUG_WD(64),.DEBUG_OFFSET(DBG_CORE0_OFFSET)) u_debug0(
+
+         .src_rst_n  (cpu_intf_rst_n   ),
+         .src_clk    (core0_clk        ),
+         .src_din    (riscv_debug0     ),
+
+         .dbg_clkin  (dbg_clkin        ), // debug clock, like uart baud clock
+         .dbg_syncin (dbg_syncin       ), // Sync for offset computation 
+         .dbg_si     (dbg_si           ), // previous dbg data
+
+         .dbg_clkout (dbg_clkout_c0    ), // debug clock, like uart baud clock
+         .dbg_syncout(dbg_syncout_c0   ), // Sync for offset computation 
+         .dbg_so     (dbg_so_c0        )
+       );
+
+dbg_port  #(.DEBUG_WD(64),.DEBUG_OFFSET(DBG_CORE1_OFFSET)) u_debug1(
+
+         .src_rst_n  (cpu_intf_rst_n   ),
+         .src_clk    (core1_clk        ),
+         .src_din    (riscv_debug1     ),
+
+         .dbg_clkin  (dbg_clkout_c0    ), // debug clock, like uart baud clock
+         .dbg_syncin (dbg_syncout_c0   ), // Sync for offset computation 
+         .dbg_si     (dbg_so_c0        ), // previous dbg data
+
+         .dbg_clkout (dbg_clkout       ), // debug clock, like uart baud clock
+         .dbg_syncout(dbg_syncout      ), // Sync for offset computation 
+         .dbg_so     (dbg_so           )
+       );
+
+`endif
 
 assign cfg_dcache_force_flush   = riscv_glbl_cfg[0];
 
@@ -548,7 +577,7 @@ ctech_clk_buf u_skew_core_clk
      .vccd1                   (VPWR                    ),// User area 1 1.8V supply
      .vssd1                   (VGND                    ),// User area 1 digital ground
 `endif
-	    .A               (core_clk_int            ), 
+	    .A              (core_clk_int            ), 
 	    .X              (core_clk_skew           ) 
        );
 
@@ -1015,6 +1044,8 @@ ycr_timer i_timer (
     // Timer interface
     .timer_val      (timer_val         ),
     .timer_irq      (timer_irq         ),
+
+    .soft_irq       (core_soft_irq     ),
 
     .riscv_glbl_cfg (riscv_glbl_cfg    ),
     .riscv_clk_cfg  (riscv_clk_cfg     ),

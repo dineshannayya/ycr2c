@@ -377,7 +377,6 @@ ycr2_top_wb i_top (
     .core_clk_int           (clk                    ),
 
 
-    .cfg_wcska_riscv_intf   (4'h0                   ),
     .wbd_clk_int            (clk                    ),
     .wbd_clk_skew           (                       ),
 

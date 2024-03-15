@@ -1,68 +1,67 @@
-//////////////////////////////////////////////////////////////////////////////
-// SPDX-FileCopyrightText: 2021, Dinesh Annayya                           ////
-//                                                                        ////
-// Licensed under the Apache License, Version 2.0 (the "License");        ////
-// you may not use this file except in compliance with the License.       ////
-// You may obtain a copy of the License at                                ////
-//                                                                        ////
-//      http://www.apache.org/licenses/LICENSE-2.0                        ////
-//                                                                        ////
-// Unless required by applicable law or agreed to in writing, software    ////
-// distributed under the License is distributed on an "AS IS" BASIS,      ////
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.///
-// See the License for the specific language governing permissions and    ////
-// limitations under the License.                                         ////
-// SPDX-License-Identifier: Apache-2.0                                    ////
-// SPDX-FileContributor: Dinesh Annayya <dinesha@opencores.org>           ////
-//////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////
-////                                                                      ////
-////  32 / 32 Divider with 16 stage pipe line , Support Signed Division   ////
-////                                                                      ////
-////  This file is part of the yifive cores project                       ////
-////  https://github.com/dineshannayya/ycr.git                           ////
-////                                                                      ////
-////  Description:                                                        ////
-////    32 Div By 32 with 16 stage pipe line for timing reason            ////
-////    Note: 2 Bit are computed at a time                                ////
-////          bit[32] =1 indicate negative number                         ////
-////                                                                      ////
-////  Example: 4'b1011 Div 4'b0011                                        ////
-////                                                                      ////
-////                                                                      ////
-////       """"""""|                                                      ////
-////          1011 |  <- qr reg                                           ////
-////      -0011000 |  <- Shuft Divider by 3                               ////
-////       """"""""|  <-  0011000 > 1011 , ignore sub, Quo: 0             ////
-////          1011 |                                                      ////
-////       -001100 |  <- Shift Divider by 2                               ////
-////       """"""""|  <-  001100 > 1011 , ignore sub, Quo:00              ////
-////          1011 |                                                      ////
-////        -00110 |  <- Shift Divider by 1                               ////
-////       """"""""|  <- 00110 < 1011, Rem: 0101 and Quo:001              ////
-////          0101 |                                                      ////
-////         -0011 |  <- Shift Divider by 0                               ////
-////       """"""""|  <- 0011 < 0101 , Rem: 10 and Quo: 0011              ////
-////            10 |                                                      ////
-////                                                                      ////
-////   Quotient, 3 (0011); remainder 2 (10).                              ////
-////                                                                      ////
-////  To Do:                                                              ////
-////    nothing                                                           ////
-////                                                                      ////
-////  Author(s):                                                          ////
-////     - syntacore, https://github.com/syntacore/scr1                   ////
-////     - Dinesh Annayya, dinesha@opencores.org                          ////
-////                                                                      ////
-////  Revision :                                                          ////
-////     v0:    Jan 2021- Initial version picked from                     ////
-////            https://github.com/syntacore/scr1                         ////
-////     v1:    June 7, 2021, Dinesh A                                    ////
-////             opentool(iverilog/yosys) related cleanup                 ////
-////     v2:    June 7, 2021, updated the 32 div and multipler for timing ///
-////                                                                      ////
-//////////////////////////////////////////////////////////////////////////////
+/*****************************************************************************************************
+ * Copyright (c) 2024 SiPlusPlus Semiconductor
+ *
+ * FileContributor: Dinesh Annayya <dinesha@opencores.org>                       
+ * FileContributor: Dinesh Annayya <dinesh@siplusplus.com>                       
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ ***************************************************************************************************/
+/****************************************************************************************************
+      32 / 32 Divider with 16 stage pipe line , Support Signed Division   
+                                                                          
+                                                                          
+      Description:                                                        
+        32 Div By 32 with 16 stage pipe line for timing reason            
+        Note: 2 Bit are computed at a time                                
+              bit[32] =1 indicate negative number                         
+                                                                          
+      Example: 4'b1011 Div 4'b0011                                        
+                                                                          
+                                                                          
+           """"""""|                                                      
+              1011 |  <- qr reg                                           
+          -0011000 |  <- Shuft Divider by 3                               
+           """"""""|  <-  0011000 > 1011 , ignore sub, Quo: 0             
+              1011 |                                                      
+           -001100 |  <- Shift Divider by 2                               
+           """"""""|  <-  001100 > 1011 , ignore sub, Quo:00              
+              1011 |                                                      
+            -00110 |  <- Shift Divider by 1                               
+           """"""""|  <- 00110 < 1011, Rem: 0101 and Quo:001              
+              0101 |                                                      
+             -0011 |  <- Shift Divider by 0                               
+           """"""""|  <- 0011 < 0101 , Rem: 10 and Quo: 0011              
+                10 |                                                      
+                                                                          
+       Quotient, 3 (0011); remainder 2 (10).                              
+                                                                          
+      To Do:                                                              
+        nothing                                                           
+                                                                          
+  Author(s):                                                  
+          - syntacore, https://github.com/syntacore/scr1                   
+          - Dinesh Annayya <dinesha@opencores.org>               
+          - Dinesh Annayya <dinesh@siplusplus.com>               
+                                                                          
+      Revision :                                                          
+         v0:    Jan 2021- Initial version picked from                     
+                https://github.com/syntacore/scr1                         
+         v1:    June 7, 2021, Dinesh A                                    
+                 opentool(iverilog/yosys) related cleanup                 
+         v2:    June 7, 2021, updated the 32 div and multipler for timing 
+                                                                          
 
+ ***************************************************************************************************/
 module ycr_pipe_div(
 	input   logic        clk, 
 	input   logic        rstn, 

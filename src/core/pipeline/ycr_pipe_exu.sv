@@ -1,74 +1,73 @@
-//////////////////////////////////////////////////////////////////////////////
-// SPDX-FileCopyrightText: 2021, Dinesh Annayya                           ////
-//                                                                        ////
-// Licensed under the Apache License, Version 2.0 (the "License");        ////
-// you may not use this file except in compliance with the License.       ////
-// You may obtain a copy of the License at                                ////
-//                                                                        ////
-//      http://www.apache.org/licenses/LICENSE-2.0                        ////
-//                                                                        ////
-// Unless required by applicable law or agreed to in writing, software    ////
-// distributed under the License is distributed on an "AS IS" BASIS,      ////
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.///
-// See the License for the specific language governing permissions and    ////
-// limitations under the License.                                         ////
-// SPDX-License-Identifier: Apache-2.0                                    ////
-// SPDX-FileContributor: Dinesh Annayya <dinesha@opencores.org>           ////
-//////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////
-////                                                                      ////
-////  yifive Execution Unit (EXU)                                         ////
-////                                                                      ////
-////  This file is part of the yifive cores project                       ////
-////  https://github.com/dineshannayya/ycr.git                           ////
-////                                                                      ////
-////  Description:                                                        ////
-////     Execution Unit (EXU)                                             ////
-////                                                                      ////
-//// Functionality:                                                       ////
-//// - Performs instructions execution:                                   ////
-////   - Prevents instructions from execution if the HART is in WFI or    ////
-//       Debug Halted state                                               ////
-////   - Fetches operands for IALU                                        ////
-////   - Calculates operation results via IALU                            ////
-////   - Stores IALU results in MPRF                                      ////
-////   - Performs LOAD/STORE operations via LSU                           ////
-//// - Handles exceptions:                                                ////
-////   - Generates exception request                                      ////
-////   - Encodes exception code                                           ////
-////   - Calculates exception trap value                                  ////
-//// - Controls WFI instruction execution                                 ////
-//// - Calculates PC value:                                               ////
-////   - Initializes PC on reset                                          ////
-////   - Stores the current PC value                                      ////
-////   - Calculates a New PC value and generates a New PC request to IFU  ////
-////                                                                      ////
-//// Structure:                                                           ////
-//// - Instruction queue                                                  ////
-//// - Integer Arithmetic Logic Unit (IALU)                               ////
-//// - Exceptions logic                                                   ////
-//// - WFI logic                                                          ////
-//// - Program Counter logic                                              ////
-//// - Load-Store Unit (LSU)                                              ////
-//// - EXU status logic                                                   ////
-//// - EXU <-> MPRF i/f                                                   ////
-//// - EXU <-> CSR i/f                                                    ////
-//// - EXU <-> TDU i/f                                                    ////
-////                                                                      ////
-////  To Do:                                                              ////
-////    nothing                                                           ////
-////                                                                      ////
-////  Author(s):                                                          ////
-////     - syntacore, https://github.com/syntacore/scr1                   ////
-////     - Dinesh Annayya, dinesha@opencores.org                          ////
-////                                                                      ////
-////  Revision :                                                          ////
-////     v0:    Jan 2021- Initial version picked from                     ////
-////            https://github.com/syntacore/scr1                         ////
-////     v1:    June 7, 2021, Dinesh A                                    ////
-////             opentool(iverilog/yosys) related cleanup                 ////
-////                                                                      ////
-//////////////////////////////////////////////////////////////////////////////
+/*****************************************************************************************************
+ * Copyright (c) 2024 SiPlusPlus Semiconductor
+ *
+ * FileContributor: Dinesh Annayya <dinesha@opencores.org>                       
+ * FileContributor: Dinesh Annayya <dinesh@siplusplus.com>                       
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ ***************************************************************************************************/
+/****************************************************************************************************
+      yifive Execution Unit (EXU)                                         
+                                                                          
+                                                                          
+      Description:                                                        
+         Execution Unit (EXU)                                             
+                                                                          
+     Functionality:                                                       
+     - Performs instructions execution:                                   
+       - Prevents instructions from execution if the HART is in WFI or    
+         Debug Halted state                                               
+       - Fetches operands for IALU                                        
+       - Calculates operation results via IALU                            
+       - Stores IALU results in MPRF                                      
+       - Performs LOAD/STORE operations via LSU                           
+     - Handles exceptions:                                                
+       - Generates exception request                                      
+       - Encodes exception code                                           
+       - Calculates exception trap value                                  
+     - Controls WFI instruction execution                                 
+     - Calculates PC value:                                               
+       - Initializes PC on reset                                          
+       - Stores the current PC value                                      
+       - Calculates a New PC value and generates a New PC request to IFU  
+                                                                          
+     Structure:                                                           
+     - Instruction queue                                                  
+     - Integer Arithmetic Logic Unit (IALU)                               
+     - Exceptions logic                                                   
+     - WFI logic                                                          
+     - Program Counter logic                                              
+     - Load-Store Unit (LSU)                                              
+     - EXU status logic                                                   
+     - EXU <-> MPRF i/f                                                   
+     - EXU <-> CSR i/f                                                    
+     - EXU <-> TDU i/f                                                    
+                                                                          
+      To Do:                                                              
+        nothing                                                           
+                                                                          
+  Author(s):                                                  
+          - syntacore, https://github.com/syntacore/scr1                   
+          - Dinesh Annayya <dinesha@opencores.org>               
+          - Dinesh Annayya <dinesh@siplusplus.com>               
+                                                                          
+      Revision :                                                          
+         v0:    Jan 2021- Initial version picked from                     
+                https://github.com/syntacore/scr1                         
+         v1:    June 7, 2021, Dinesh A                                    
+                 opentool(iverilog/yosys) related cleanup                 
+                                                                          
+ ***************************************************************************************************/
 
 `include "ycr_arch_description.svh"
 `include "ycr_arch_types.svh"

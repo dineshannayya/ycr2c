@@ -1,75 +1,74 @@
-//////////////////////////////////////////////////////////////////////////////
-// SPDX-FileCopyrightText: 2021, Dinesh Annayya                           ////
-//                                                                        ////
-// Licensed under the Apache License, Version 2.0 (the "License");        ////
-// you may not use this file except in compliance with the License.       ////
-// You may obtain a copy of the License at                                ////
-//                                                                        ////
-//      http://www.apache.org/licenses/LICENSE-2.0                        ////
-//                                                                        ////
-// Unless required by applicable law or agreed to in writing, software    ////
-// distributed under the License is distributed on an "AS IS" BASIS,      ////
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.///
-// See the License for the specific language governing permissions and    ////
-// limitations under the License.                                         ////
-// SPDX-License-Identifier: Apache-2.0                                    ////
-// SPDX-FileContributor: Dinesh Annayya <dinesha@opencores.org>           ////
-//////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////
-////                                                                      ////
-////  yifive Debug Module (DM)                                            ////
-////                                                                      ////
-////  This file is part of the yifive cores project                       ////
-////  https://github.com/dineshannayya/ycr.git                           ////
-////                                                                      ////
-////  Description:                                                        ////
-////     Debug Module (DM)                                                ////
-////                                                                      ////
-////  Functionality:                                                      ////
-////   - Allows debugger to perform a system reset (ndm_rst)              ////
-////   - Allows debugger to control the HART's state                      ////
-////   - Provides debugger with information about the current HART's state////
-////   - Provides debugger with Abstract Command interface that allows to:////
-////     - Access MPRF registers                                          ////
-////     - Access CSR registers                                           ////
-////     - Access memory with the same view and permission as the hart has////
-////   - Provides debugger with Abstract Command status information       ////
-////       (busy flag and error code)                                     ////
-////   - Provides debugger with Program Buffer functionality that         ////
-////        allows to execute small programs on a halted HART             ////
-////                                                                      ////
-////  Structure:                                                          ////
-////      - DM <-> DMI interface                                          ////
-////      - DM registers:                                                 ////
-////        - DMCONTROL                                                   ////
-////        - DMSTATUS                                                    ////
-////      - Abstract Command Control logic                                ////
-////      - Abstract Command FSM                                          ////
-////      - Abstract Command Status logic                                 ////
-////      - Abstract Instruction logic                                    ////
-////      - Abstract registers:                                           ////
-////        - COMMAND                                                     ////
-////        - ABSTRACTAUTO                                                ////
-////        - PROGBUF0..5                                                 ////
-////        - DATA0..1                                                    ////
-////      - DHI FSM                                                       ////
-////      - HART command registers                                        ////
-////      - DHI interface                                                 ////
-////                                                                      ////
-////  To Do:                                                              ////
-////    nothing                                                           ////
-////                                                                      ////
-////  Author(s):                                                          ////
-////     - syntacore, https://github.com/syntacore/scr1                   ////
-////     - Dinesh Annayya, dinesha@opencores.org                          ////
-////                                                                      ////
-////  Revision :                                                          ////
-////     v0:    Jan 2021- Initial version picked from                     ////
-////            https://github.com/syntacore/scr1                         ////
-////     v1:    June 7, 2021, Dinesh A                                    ////
-////             opentool(iverilog/yosys) related cleanup                 ////
-////                                                                      ////
-//////////////////////////////////////////////////////////////////////////////
+/*****************************************************************************************************
+ * Copyright (c) 2024 SiPlusPlus Semiconductor
+ *
+ * FileContributor: Dinesh Annayya <dinesha@opencores.org>                       
+ * FileContributor: Dinesh Annayya <dinesh@siplusplus.com>                       
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ ***************************************************************************************************/
+/****************************************************************************************************
+      yifive Debug Module (DM)                                            
+                                                                          
+                                                                          
+      Description:                                                        
+         Debug Module (DM)                                                
+                                                                          
+      Functionality:                                                      
+       - Allows debugger to perform a system reset (ndm_rst)              
+       - Allows debugger to control the HART's state                      
+       - Provides debugger with information about the current HART's state
+       - Provides debugger with Abstract Command interface that allows to:
+         - Access MPRF registers                                          
+         - Access CSR registers                                           
+         - Access memory with the same view and permission as the hart has
+       - Provides debugger with Abstract Command status information       
+           (busy flag and error code)                                     
+       - Provides debugger with Program Buffer functionality that         
+            allows to execute small programs on a halted HART             
+                                                                          
+      Structure:                                                          
+          - DM <-> DMI interface                                          
+          - DM registers:                                                 
+            - DMCONTROL                                                   
+            - DMSTATUS                                                    
+          - Abstract Command Control logic                                
+          - Abstract Command FSM                                          
+          - Abstract Command Status logic                                 
+          - Abstract Instruction logic                                    
+          - Abstract registers:                                           
+            - COMMAND                                                     
+            - ABSTRACTAUTO                                                
+            - PROGBUF0..5                                                 
+            - DATA0..1                                                    
+          - DHI FSM                                                       
+          - HART command registers                                        
+          - DHI interface                                                 
+                                                                          
+      To Do:                                                              
+        nothing                                                           
+                                                                          
+  Author(s):                                                  
+          - syntacore, https://github.com/syntacore/scr1                   
+          - Dinesh Annayya <dinesha@opencores.org>               
+          - Dinesh Annayya <dinesh@siplusplus.com>               
+                                                                          
+      Revision :                                                          
+         v0:    Jan 2021- Initial version picked from                     
+                https://github.com/syntacore/scr1                         
+         v1:    June 7, 2021, Dinesh A                                    
+                 opentool(iverilog/yosys) related cleanup                 
+ ***************************************************************************************************/
+                                                                          
 
 `include "ycr_arch_description.svh"
 

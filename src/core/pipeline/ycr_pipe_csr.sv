@@ -1,69 +1,68 @@
-//////////////////////////////////////////////////////////////////////////////
-// SPDX-FileCopyrightText: 2021, Dinesh Annayya                           ////
-//                                                                        ////
-// Licensed under the Apache License, Version 2.0 (the "License");        ////
-// you may not use this file except in compliance with the License.       ////
-// You may obtain a copy of the License at                                ////
-//                                                                        ////
-//      http://www.apache.org/licenses/LICENSE-2.0                        ////
-//                                                                        ////
-// Unless required by applicable law or agreed to in writing, software    ////
-// distributed under the License is distributed on an "AS IS" BASIS,      ////
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.///
-// See the License for the specific language governing permissions and    ////
-// limitations under the License.                                         ////
-// SPDX-License-Identifier: Apache-2.0                                    ////
-// SPDX-FileContributor: Dinesh Annayya <dinesha@opencores.org>           ////
-//////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////
-////                                                                      ////
-////  yifive Control Status Registers (CSR)                               ////
-////                                                                      ////
-////  This file is part of the yifive cores project                       ////
-////  https://github.com/dineshannayya/ycr.git                           ////
-////                                                                      ////
-////  Description:                                                        ////
-////     Control Status Registers (CSR)                                   ////
-////                                                                      ////
-//// Functionality:                                                       ////
-//// - Provides access to RISC-V CSR Machine registers                    ////
-//// - Handles events (EXC, IRQ and MRET):                                ////
-////   - Setups handling configuration                                    ////
-////   - Displays events statuses and information                         ////
-////   - Generates new PC                                                 ////
-//// - Provides information about the number of executed instructions and ////
-////   elapsed  cycles                                                    ////
-//// - Provides interfaces for IPIC, HDU and TDU registers access         ////
-////                                                                      ////
-//// Structure:                                                           ////
-//// - Events (EXC, IRQ, MRET) logic                                      ////
-//// - CSR read/write interface                                           ////
-//// - CSR registers:                                                     ////
-////   - Machine Trap Setup registers                                     ////
-////   - Machine Trap Handling registers                                  ////
-////   - Machine Counters/Timers registers                                ////
-////   - Non-standard CSRs (MCOUNTEN)                                     ////
-//// - CSR <-> EXU i/f                                                    ////
-//// - CSR <-> IPIC i/f                                                   ////
-//// - CSR <-> HDU i/f                                                    ////
-//// - CSR <-> TDU i/f                                                    ////
-////                                                                      ////
-////  To Do:                                                              ////
-////    nothing                                                           ////
-////                                                                      ////
-////  Author(s):                                                          ////
-////     - syntacore, https://github.com/syntacore/scr1                   ////
-////     - Dinesh Annayya, dinesha@opencores.org                          ////
-////                                                                      ////
-////  Revision :                                                          ////
-////     v0:    Jan 2021- Initial version picked from                     ////
-////            https://github.com/syntacore/scr1                         ////
-////     v1:    June 7, 2021, Dinesh A                                    ////
-////             opentool(iverilog/yosys) related cleanup                 ////
-////     v2:   Aug 21, 2022, Dinesh A                                     ////
-////          Logic movement to break combinational loop                  ////
-////                                                                      ////
-//////////////////////////////////////////////////////////////////////////////
+/*****************************************************************************************************
+ * Copyright (c) 2024 SiPlusPlus Semiconductor
+ *
+ * FileContributor: Dinesh Annayya <dinesha@opencores.org>                       
+ * FileContributor: Dinesh Annayya <dinesh@siplusplus.com>                       
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ ***************************************************************************************************/
+/****************************************************************************************************
+      yifive Control Status Registers (CSR)                               
+                                                                          
+                                                                          
+      Description:                                                        
+         Control Status Registers (CSR)                                   
+                                                                          
+     Functionality:                                                       
+     - Provides access to RISC-V CSR Machine registers                    
+     - Handles events (EXC, IRQ and MRET):                                
+       - Setups handling configuration                                    
+       - Displays events statuses and information                         
+       - Generates new PC                                                 
+     - Provides information about the number of executed instructions and 
+       elapsed  cycles                                                    
+     - Provides interfaces for IPIC, HDU and TDU registers access         
+                                                                          
+     Structure:                                                           
+     - Events (EXC, IRQ, MRET) logic                                      
+     - CSR read/write interface                                           
+     - CSR registers:                                                     
+       - Machine Trap Setup registers                                     
+       - Machine Trap Handling registers                                  
+       - Machine Counters/Timers registers                                
+       - Non-standard CSRs (MCOUNTEN)                                     
+     - CSR <-> EXU i/f                                                    
+     - CSR <-> IPIC i/f                                                   
+     - CSR <-> HDU i/f                                                    
+     - CSR <-> TDU i/f                                                    
+                                                                          
+      To Do:                                                              
+        nothing                                                           
+                                                                          
+  Author(s):                                                  
+          - syntacore, https://github.com/syntacore/scr1                   
+          - Dinesh Annayya <dinesha@opencores.org>               
+          - Dinesh Annayya <dinesh@siplusplus.com>               
+
+      Revision :                                                          
+         v0:    Jan 2021- Initial version picked from                     
+                https://github.com/syntacore/scr1                         
+         v1:    June 7, 2021, Dinesh A                                    
+                 opentool(iverilog/yosys) related cleanup                 
+         v2:   Aug 21, 2022, Dinesh A                                     
+              Logic movement to break combinational loop                  
+                                                                          
+ ***************************************************************************************************/
 
 `include "ycr_arch_description.svh"
 `include "ycr_csr.svh"

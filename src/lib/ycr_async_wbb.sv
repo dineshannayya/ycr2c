@@ -1,75 +1,49 @@
-//////////////////////////////////////////////////////////////////////////////
-// SPDX-FileCopyrightText: 2021 , Dinesh Annayya                          
-// 
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileContributor: Created by Dinesh Annayya <dinesha@opencores.org>
-//
-//////////////////////////////////////////////////////////////////////
-////                                                              ////
-////  Async Wishbone Interface iBurst Enable and lack             ////
-////                                                              ////
-////  This file is part of the YIFive cores project               ////
-////  http://www.opencores.org/cores/yifive/                      ////
-////                                                              ////
-////  Description                                                 ////
-////      This block does async Wishbone from one clock to other  ////
-////      clock domain
-////                                                              ////
-////  To Do:                                                      ////
-////    nothing                                                   ////
-////                                                              ////
-////  Author(s):                                                  ////
-////      - Dinesh Annayya, dinesha@opencores.org                 ////
-////                                                              ////
-////  Revision :                                                  ////
-////    0.1 - 25th Feb 2021, Dinesh A                             ////
-////          initial version                                     ////
-////    0.2 - 28th Feb 2021, Dinesh A                             ////
-////          reduced the response FIFO path depth to 2 as        ////
-////          return path used by only read logic and read is     ////
-////          blocking request and expect only one location will  ////
-////          be used                                             ////
-////    0.3 - 20 Jan 2022, Dinesh A                               ////
-////          added wishbone burst mode. Additional signal added  ////
-////           A. *bl  - 10 Bit word Burst count, 1 - 1 DW(32 bit)////
-////           B. *lack - Last Burst ack                          //// 
-//////////////////////////////////////////////////////////////////////
-////                                                              ////
-//// Copyright (C) 2000 Authors and OPENCORES.ORG                 ////
-////                                                              ////
-//// This source file may be used and distributed without         ////
-//// restriction provided that this copyright statement is not    ////
-//// removed from the file and that any derivative work contains  ////
-//// the original copyright notice and the associated disclaimer. ////
-////                                                              ////
-//// This source file is free software; you can redistribute it   ////
-//// and/or modify it under the terms of the GNU Lesser General   ////
-//// Public License as published by the Free Software Foundation; ////
-//// either version 2.1 of the License, or (at your option) any   ////
-//// later version.                                               ////
-////                                                              ////
-//// This source is distributed in the hope that it will be       ////
-//// useful, but WITHOUT ANY WARRANTY; without even the implied   ////
-//// warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR      ////
-//// PURPOSE.  See the GNU Lesser General Public License for more ////
-//// details.                                                     ////
-////                                                              ////
-//// You should have received a copy of the GNU Lesser General    ////
-//// Public License along with this source; if not, download it   ////
-//// from http://www.opencores.org/lgpl.shtml                     ////
-////                                                              ////
-//////////////////////////////////////////////////////////////////////
+/*****************************************************************************************************
+ * Copyright (c) 2024 SiPlusPlus Semiconductor
+ *
+ * FileContributor: Dinesh Annayya <dinesha@opencores.org>                       
+ * FileContributor: Dinesh Annayya <dinesh@siplusplus.com>                       
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ ***************************************************************************************************/
+/****************************************************************************************************
+  Async Wishbone Interface iBurst Enable and lack             
+                                                              
+                                                              
+  Description                                                 
+      This block does async Wishbone from one clock to other  
+      clock domain
+                                                              
+  To Do:                                                      
+    nothing                                                   
+                                                              
+  Author(s):                                                  
+          - Dinesh Annayya <dinesha@opencores.org>               
+          - Dinesh Annayya <dinesh@siplusplus.com>               
+                                                              
+  Revision :                                                  
+    0.1 - 25th Feb 2021, Dinesh A                             
+          initial version                                     
+    0.2 - 28th Feb 2021, Dinesh A                             
+          reduced the response FIFO path depth to 2 as        
+          return path used by only read logic and read is     
+          blocking request and expect only one location will  
+          be used                                             
+    0.3 - 20 Jan 2022, Dinesh A                               
+          added wishbone burst mode. Additional signal added  
+           A. *bl  - 10 Bit word Burst count, 1 - 1 DW(32 bit)
+           B. *lack - Last Burst ack                           
+ ***************************************************************************************************/
 
 module ycr_async_wbb 
      #(parameter AW  = 32,

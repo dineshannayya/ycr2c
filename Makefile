@@ -176,6 +176,9 @@ ifneq (,$(findstring e,$(ARCH_lowercase)))
     endif
 endif
 
+### To Enable IVERILOG FST DUMP
+export IVERILOG_DUMPER = fst
+
 #--
 ifeq (,$(findstring e,$(ARCH_lowercase)))
 # These tests cannot be compiled for RVE
@@ -191,7 +194,7 @@ endif
 TARGETS += isr_sample
 
 # Comment this target if you don't want to run the coremark
-ARGETS += coremark
+TARGETS += coremark
 
 # Comment this target if you don't want to run the dhrystone
 TARGETS += dhrystone21

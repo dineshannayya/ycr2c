@@ -1,49 +1,48 @@
-//////////////////////////////////////////////////////////////////////////////
-// SPDX-FileCopyrightText: 2021, Dinesh Annayya                           ////
-//                                                                        ////
-// Licensed under the Apache License, Version 2.0 (the "License");        ////
-// you may not use this file except in compliance with the License.       ////
-// You may obtain a copy of the License at                                ////
-//                                                                        ////
-//      http://www.apache.org/licenses/LICENSE-2.0                        ////
-//                                                                        ////
-// Unless required by applicable law or agreed to in writing, software    ////
-// distributed under the License is distributed on an "AS IS" BASIS,      ////
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.///
-// See the License for the specific language governing permissions and    ////
-// limitations under the License.                                         ////
-// SPDX-License-Identifier: Apache-2.0                                    ////
-// SPDX-FileContributor: Dinesh Annayya <dinesha@opencores.org>           ////
-//////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////
-////                                                                      ////
-////  yifive 32x32 Multiplier with 8 stage pipe line                      ////
-////                                                                      ////
-////  This file is part of the yifive cores project                       ////
-////  https://github.com/dineshannayya/ycr.git                           ////
-////                                                                      ////
-////  Description:                                                        ////
-////    32x32 Multiplier with 8 stage pipe line for timing reason         ////
-////    Support signed multiplication, bit[32] indicate sign              ////
-////                                                                      ////
-////  To Do:                                                              ////
-////    nothing                                                           ////
-////                                                                      ////
-////  Author(s):                                                          ////
-////     - syntacore, https://github.com/syntacore/scr1                   ////
-////     - Dinesh Annayya, dinesha@opencores.org                          ////
-////                                                                      ////
-////  Revision :                                                          ////
-////     v0 - 25th July 2021                                              ////
-////              Breaking two's complement into two stage for            ////
-////              timing reason, When all lower 32 bit zero and           ////
-////              it's complement will be '1', this will cause            ////
-////              increment in higer bits                                 ////
-////     v1 - 11 Nov 2022                                                 ////
-////             Added addition one cycle pipe line to break two's        ////
-////             complements for input data                               ////
-////                                                                      ////
-//////////////////////////////////////////////////////////////////////////////
+/*****************************************************************************************************
+ * Copyright (c) 2024 SiPlusPlus Semiconductor
+ *
+ * FileContributor: Dinesh Annayya <dinesha@opencores.org>                       
+ * FileContributor: Dinesh Annayya <dinesh@siplusplus.com>                       
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ ***************************************************************************************************/
+/****************************************************************************************************
+      yifive 32x32 Multiplier with 8 stage pipe line                      
+                                                                          
+                                                                          
+      Description:                                                        
+        32x32 Multiplier with 8 stage pipe line for timing reason         
+        Support signed multiplication, bit[32] indicate sign              
+                                                                          
+      To Do:                                                              
+        nothing                                                           
+                                                                          
+  Author(s):                                                  
+          - syntacore, https://github.com/syntacore/scr1                   
+          - Dinesh Annayya <dinesha@opencores.org>               
+          - Dinesh Annayya <dinesh@siplusplus.com>               
+                                                                          
+      Revision :                                                          
+         v0 - 25th July 2021                                              
+                  Breaking two's complement into two stage for            
+                  timing reason, When all lower 32 bit zero and           
+                  it's complement will be '1', this will cause            
+                  increment in higer bits                                 
+         v1 - 11 Nov 2022                                                 
+                 Added addition one cycle pipe line to break two's        
+                 complements for input data                               
+ ***************************************************************************************************/
+                                                                          
 module ycr_pipe_mul (
 	input   logic        clk, 
 	input   logic        rstn, 

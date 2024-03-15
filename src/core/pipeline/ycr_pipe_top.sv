@@ -1,49 +1,48 @@
-//////////////////////////////////////////////////////////////////////////////
-// SPDX-FileCopyrightText: 2021, Dinesh Annayya                           ////
-//                                                                        ////
-// Licensed under the Apache License, Version 2.0 (the "License");        ////
-// you may not use this file except in compliance with the License.       ////
-// You may obtain a copy of the License at                                ////
-//                                                                        ////
-//      http://www.apache.org/licenses/LICENSE-2.0                        ////
-//                                                                        ////
-// Unless required by applicable law or agreed to in writing, software    ////
-// distributed under the License is distributed on an "AS IS" BASIS,      ////
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.///
-// See the License for the specific language governing permissions and    ////
-// limitations under the License.                                         ////
-// SPDX-License-Identifier: Apache-2.0                                    ////
-// SPDX-FileContributor: Dinesh Annayya <dinesha@opencores.org>           ////
-//////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////
-////                                                                      ////
-////  yifive pipeline top                                                 ////
-////                                                                      ////
-////  This file is part of the yifive cores project                       ////
-////  https://github.com/dineshannayya/ycr.git                           ////
-////                                                                      ////
-////  Description:                                                        ////
-////     pipeline top                                                     ////
-////                                                                      ////
-////  To Do:                                                              ////
-////    nothing                                                           ////
-////                                                                      ////
-////  Author(s):                                                          ////
-////     - syntacore, https://github.com/syntacore/scr1                   ////
-////     - Dinesh Annayya, dinesha@opencores.org                          ////
-////                                                                      ////
-////  Revision :                                                          ////
-////     v0:    Jan 2021- Initial version picked from                     ////
-////            https://github.com/syntacore/scr1                         ////
-////     v1:    June 7, 2021, Dinesh A                                    ////
-////             opentool(iverilog/yosys) related cleanup                 ////
-////     v2:    June 10, 2021, Dinesh A                                   ////
-////           Bugfix- reset correction for ycr_pipe_tdu when debug is   ////
-////           not enabled                                                ////
-////           Note: previously reset rst_n is floating at simulation is  ////
-////           failing when YCR_DBG_EN is disabled                       ////
-////                                                                      ////
-//////////////////////////////////////////////////////////////////////////////
+/*****************************************************************************************************
+ * Copyright (c) 2024 SiPlusPlus Semiconductor
+ *
+ * FileContributor: Dinesh Annayya <dinesha@opencores.org>                       
+ * FileContributor: Dinesh Annayya <dinesh@siplusplus.com>                       
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ ***************************************************************************************************/
+/****************************************************************************************************
+      yifive pipeline top                                                 
+                                                                          
+                                                                          
+      Description:                                                        
+         pipeline top                                                     
+                                                                          
+      To Do:                                                              
+        nothing                                                           
+                                                                          
+  Author(s):                                                  
+          - syntacore, https://github.com/syntacore/scr1                   
+          - Dinesh Annayya <dinesha@opencores.org>               
+          - Dinesh Annayya <dinesh@siplusplus.com>               
+                                                                          
+      Revision :                                                          
+         v0:    Jan 2021- Initial version picked from                     
+                https://github.com/syntacore/scr1                         
+         v1:    June 7, 2021, Dinesh A                                    
+                 opentool(iverilog/yosys) related cleanup                 
+         v2:    June 10, 2021, Dinesh A                                   
+               Bugfix- reset correction for ycr_pipe_tdu when debug is   
+               not enabled                                                
+               Note: previously reset rst_n is floating at simulation is  
+               failing when YCR_DBG_EN is disabled                       
+                                                                          
+ ***************************************************************************************************/
 
 `include "ycr_arch_description.svh"
 `include "ycr_memif.svh"
@@ -312,9 +311,9 @@ logic                                       pipe2clkctl_wake_req_o;
 `endif // YCR_CLKCTRL_EN
 
 
-assign pipe_debug = {curr_pc[31:0],new_pc_req,stop_fetch, exu_exc_req,brkpt,exu_init_pc,wfi_run2halt,instret,
+assign pipe_debug = {new_pc_req,stop_fetch, exu_exc_req,brkpt,exu_init_pc,wfi_run2halt,instret,
 	             ifu2idu_vd,idu2ifu_rdy,idu2exu_req,exu2idu_rdy,exu2mprf_w_req,exu2csr_r_req,csr2exu_rw_exc,
-	             exu2csr_mret_update,csr2exu_irq,csr2exu_mstatus_mie_up};
+	             exu2csr_mret_update,csr2exu_irq,csr2exu_mstatus_mie_up,curr_pc[31:0]};
 //-------------------------------------------------------------------------------
 // Pipeline logic
 //-------------------------------------------------------------------------------

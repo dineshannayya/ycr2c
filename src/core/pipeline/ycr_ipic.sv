@@ -1,70 +1,69 @@
-//////////////////////////////////////////////////////////////////////////////
-// SPDX-FileCopyrightText: 2021, Dinesh Annayya                           ////
-//                                                                        ////
-// Licensed under the Apache License, Version 2.0 (the "License");        ////
-// you may not use this file except in compliance with the License.       ////
-// You may obtain a copy of the License at                                ////
-//                                                                        ////
-//      http://www.apache.org/licenses/LICENSE-2.0                        ////
-//                                                                        ////
-// Unless required by applicable law or agreed to in writing, software    ////
-// distributed under the License is distributed on an "AS IS" BASIS,      ////
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.///
-// See the License for the specific language governing permissions and    ////
-// limitations under the License.                                         ////
-// SPDX-License-Identifier: Apache-2.0                                    ////
-// SPDX-FileContributor: Dinesh Annayya <dinesha@opencores.org>           ////
-//////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////
-////                                                                      ////
-////  yifive Integrated Programmable Interrupt Controller (IPIC)          ////
-////                                                                      ////
-////  This file is part of the yifive cores project                       ////
-////  https://github.com/dineshannayya/ycr.git                           ////
-////                                                                      ////
-////  Description:                                                        ////
-////     Integrated Programmable Interrupt Controller (IPIC)              ////
-////                                                                      ////
-//// Functionality:                                                       ////
-//// - Synchronizes IRQ lines (optional)                                  ////
-//// - Detects level and edge (with optional lines inversion) of IRQ lines////
-//// - Setups interrupts handling (mode, inversion, enable)               ////
-//// - Provides information about pending interrupts and interrupts       ////
-////   currently in service                                               ////
-//// - Generates interrupt request to CSR                                 ////
-////                                                                      ////
-//// Structure:                                                           ////
-//// - IRQ lines handling (synchronization, level and edge detection) logic///
-//// - IPIC registers:                                                    ////
-////   - CISV                                                             ////
-////   - CICSR                                                            ////
-////   - EOI                                                              ////
-////   - SOI                                                              ////
-////   - IDX                                                              ////
-////   - IPR                                                              ////
-////   - ISVR                                                             ////
-////   - IER                                                              ////
-////   - IMR                                                              ////
-////   - IINVR                                                            ////
-////   - ICSR                                                             ////
-//// - Priority interrupt generation logic                                ////
-////                                                                      ////
-////  To Do:                                                              ////
-////    nothing                                                           ////
-////                                                                      ////
-////  Author(s):                                                          ////
-////     - syntacore, https://github.com/syntacore/scr1                   ////
-////     - Dinesh Annayya, dinesha@opencores.org                          ////
-////                                                                      ////
-////  Revision :                                                          ////
-////     v0:    Jan 2021- Initial version picked from                     ////
-////            https://github.com/syntacore/scr1                         ////
-////     v1:    June 7, 2021, Dinesh A                                    ////
-////             opentool(iverilog/yosys) related cleanup                 ////
-////     v2:    Aug 21, 2022, Dinesh A                                    ////
-////            Interrupt support increse from 16 to 32                   ////
-////                                                                      ////
-//////////////////////////////////////////////////////////////////////////////
+/*****************************************************************************************************
+ * Copyright (c) 2024 SiPlusPlus Semiconductor
+ *
+ * FileContributor: Dinesh Annayya <dinesha@opencores.org>                       
+ * FileContributor: Dinesh Annayya <dinesh@siplusplus.com>                       
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ ***************************************************************************************************/
+/****************************************************************************************************
+  yifive Integrated Programmable Interrupt Controller (IPIC)          
+                                                                      
+                                                                      
+  Description:                                                        
+     Integrated Programmable Interrupt Controller (IPIC)              
+                                                                      
+ Functionality:                                                       
+ - Synchronizes IRQ lines (optional)                                  
+ - Detects level and edge (with optional lines inversion) of IRQ lines
+ - Setups interrupts handling (mode, inversion, enable)               
+ - Provides information about pending interrupts and interrupts       
+   currently in service                                               
+ - Generates interrupt request to CSR                                 
+                                                                      
+ Structure:                                                           
+ - IRQ lines handling (synchronization, level and edge detection) logic
+ - IPIC registers:                                                    
+   - CISV                                                             
+   - CICSR                                                            
+   - EOI                                                              
+   - SOI                                                              
+   - IDX                                                              
+   - IPR                                                              
+   - ISVR                                                             
+   - IER                                                              
+   - IMR                                                              
+   - IINVR                                                            
+   - ICSR                                                             
+ - Priority interrupt generation logic                                
+                                                                      
+  To Do:                                                              
+    nothing                                                           
+                                                                      
+  Author(s):                                                  
+          - syntacore, https://github.com/syntacore/scr1                   
+          - Dinesh Annayya <dinesha@opencores.org>               
+          - Dinesh Annayya <dinesh@siplusplus.com>               
+                                                                      
+  Revision :                                                          
+     v0:    Jan 2021- Initial version picked from                     
+            https://github.com/syntacore/scr1                         
+     v1:    June 7, 2021, Dinesh A                                    
+             opentool(iverilog/yosys) related cleanup                 
+     v2:    Aug 21, 2022, Dinesh A                                    
+            Interrupt support increse from 16 to 32                   
+                                                                      
+ ***************************************************************************************************/
 
 
 `include "ycr_arch_description.svh"

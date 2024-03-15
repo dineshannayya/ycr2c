@@ -1,47 +1,46 @@
+/*****************************************************************************************************
+ * Copyright (c) 2024 SiPlusPlus Semiconductor
+ *
+ * FileContributor: Dinesh Annayya <dinesha@opencores.org>                       
+ * FileContributor: Dinesh Annayya <dinesh@siplusplus.com>                       
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ ***************************************************************************************************/
+/****************************************************************************************************
+                                                              
+  instruction application side fsm
+                                                              
+  
+  Description :
+      This fsm manages all the cache refill and Prefill operation
+      Prefill - During power up, with prefill command, complete
+                2KB Cache memory will be refreshed with applicaton
+                memory and corresponding tag memory is updated
+      refill -  With refill request only one cache line will be
+                refreshed
+                                                              
+  To Do:                                                      
+    nothing
+                                                              
+                                                              
+  Author(s):                                                  
+          - Dinesh Annayya <dinesha@opencores.org>               
+          - Dinesh Annayya <dinesh@siplusplus.com>               
+  Revision :                                                  
+    0.1 - 19th Jan 2022, Dinesh A                             
+           Working initial version
 
-//////////////////////////////////////////////////////////////////////////////
-// SPDX-FileCopyrightText: 2021 , Dinesh Annayya                          
-// 
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileContributor: Created by Dinesh Annayya <dinesha@opencores.org>
-//
-///////////////////////////////////////////////////////////////////
-////                                                              
-////  instruction application side fsm
-////                                                              
-////  This file is part of the riscduino cores project            
-////  https://github.com/dineshannayya/riscduino.git              
-////  
-////  Description :
-////      This fsm manages all the cache refill and Prefill operation
-////      Prefill - During power up, with prefill command, complete
-////                2KB Cache memory will be refreshed with applicaton
-////                memory and corresponding tag memory is updated
-////      refill -  With refill request only one cache line will be
-////                refreshed
-////                                                              
-////  To Do:                                                      
-////    nothing
-////                                                              
-////  Author(s):                                                  
-////      - Dinesh Annayya, dinesha@opencores.org                 
-////                                                              
-////  Revision :                                                  
-////    0.1 - 19th Jan 2022, Dinesh A                             
-////           Working initial version
-////
-//// ******************************************************************************************************
+ ***************************************************************************************************/
 
 `include "ycr_cache_defs.svh"
 

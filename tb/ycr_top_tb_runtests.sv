@@ -79,7 +79,7 @@ end
 	 if(rst_init) begin
 	     instr_count = 0;
 	 end else if(`RISC_IFU.ifu2idu_vd_o & `RISC_IFU.idu2ifu_rdy_i) begin
-             $display("RISCV-DEBUG => Cnt: %x Instr: %x", instr_count,`RISC_IFU.ifu2idu_instr_o);
+             //$display("RISCV-DEBUG => Cnt: %x Instr: %x", instr_count,`RISC_IFU.ifu2idu_instr_o);
              instr_count = instr_count+1;
 	  end
  end

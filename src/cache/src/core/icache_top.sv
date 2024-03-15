@@ -1,125 +1,123 @@
-//////////////////////////////////////////////////////////////////////////////
-// SPDX-FileCopyrightText: 2021 , Dinesh Annayya                          
-// 
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-// SPDX-License-Identifier: Apache-2.0
-// SPDX-FileContributor: Created by Dinesh Annayya <dinesha@opencores.org>
-//
-///////////////////////////////////////////////////////////////////
-////                                                              
-////  instruction cache top                                                   
-////                                                              
-////  This file is part of the riscduino cores project            
-////  https://github.com/dineshannayya/riscduino.git              
-////  
-////                                                              
-////  Description                                                 
-////
-////    This a 16-way set associative cache module. 
-//// 	The cache can be used between a CPU Instruction Memory and Main Memory or
-//// 	Secondary Cache. 
-//// 	The cache uses following policies:
-//// 	1. Module is configured to be used in Look-through Architecture
-//// 	2. The module implements Fist In First Out (FIFO) policy for eviction of valid 
-////       i.e if the cache fill order is 0,1,2,3,4,5,5,6,7,8 ...  During the
-////       cache refill will be over-written in same order 0,1,2,3 ...
-////
-//// 	   The module inferres 2KB cache Memory and 16 Location TAG Memory
-//// 	   The TAG RAM stores tag data as well as Valid, Dirty Bits.
-////
-//// 	   The Most significant bit is Valid bit in tag data
-//// 	   block, and all other are TAG data bits.
-//// 		----------------------------------------------------------------------
-//// 		|Valid bit |        Tag Data
-//// 		----------------------------------------------------------------------
-////
-//// 	States of Finite State Machine implemented for Cache
-//// 	Controller and its basic explanation:
-////    1. PREFILL: During power up, with prefill command, complete
-////                2KB Cache memory will be refreshed with applicaton
-////                memory and corresponding tag memory is updated
+/*****************************************************************************************************
+ * Copyright (c) 2024 SiPlusPlus Semiconductor
+ *
+ * FileContributor: Dinesh Annayya <dinesha@opencores.org>                       
+ * FileContributor: Dinesh Annayya <dinesh@siplusplus.com>                       
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ ***************************************************************************************************/
+/****************************************************************************************************
+  instruction cache top                                                   
+  
+                                                              
+  Description                                                 
 
-////
-//// 	2. IDLE: This is a reset/default state of FSM. It waits for
-//// 	         read or write command from CPU and when receives any,
-//// 	         it latches the address and move to TAG_COMPARE state
-////
-//// 	3. TAG_COMPARE: 
-////             This is a decision state for tag hit or miss in cache. 
-////             If hit, 
-////                  B1. As this interface only support read access.
-////                      A2. Read the cache memory offset location.
-////                      B2. Move to IDLE
-////             If No hit, It moved to refill state.
-////    4. CACHE_REFILL:
-//// 		In this state, data will be filled from Main memory
-////            to cache memory. 
-////                  A1. As current cpu access is read, cache memory will be
-////                      loaded with main memory data and once cpu request
-////                      address is available data will be fed back to cpu
-////                       with ack 
-////   5.NEXT_CACHE_REFILL_REQ : If the next tag data is not available in
-////            cache & application fsm is free, then put request for next tag
-////            location prefetech. This can be disabled by cfg_ntag_pfet_dis
-////
-//// Assumptions:
-////            1. Wishbone Support Burst Read access. 
-////               To support is additional two signal added to wishbone i/f
-////                  *_bl  - 8 Bit - Indicate Burst Word, 1 Indicate 1 word
-////                          FF - 255 word
-////                  *_lack- Indicate last ack of the busrt ack
-////                  *_ack - Ack will be asserted for completion of each
-////                  valid access
-//// Memory organization
-////       TAG Memory:
-////              A1. Each location hold  20 bit of [26:7] cpu address
-////              A2. Each location also has Valid bit 
-////              A3. Dirtly bit indicate cache memory is locally modified. need
-////                  to write back data during cache location flush.
-////              A4. There are 16 Tag location corresponds to 16 cache line
-////       Cache Memory: 2KB SRAM or 512 Word SRAM
-////             16 Cache Line * 32 Cache Word = 512 Word = 2048 Byte
-////             Cache Address : <tag offset[3:0]> <cache ptr[4:0]> 
-////
-//// CPU address decoding:
-////      [1:0]   -  32 Bit Word
-////      [6:2]   -  32 Cache Word
-////      [26:7]  -  Tag comparsion
-////      [31:27] - Unused
-////      
-////      With [26:0] access, cache can address up to 128MB Memory Space.
-////
-////  Note: Skywater SRAM has two port
-////     port-0: Support both Write and Read - This port used for cache write
-////             back and Refill purpose
-////     port-1: Support Read access only - This port used to read tag hit
-////             cache location data
-////  To Do:                                                      
-////    nothing
-////                                                              
-////  Author(s):                                                  
-////      - Dinesh Annayya, dinesha@opencores.org                 
-////                                                              
-////  Revision :                                                  
-////    0.1 - 19th Jan 2022, Dinesh A                             
-////           Working initial version
-////    0.2 - 20th Jan 2022, Dinesh A                             
-////          moved the user cpu  wishbone interface to custom cpu interface and
-////          bug fix around buswidth
-////    0.3 - 13 Mar 2024, Dinesh A
-////          direct icache write allowed for RVC/Fence Instruction
-////
-//// ******************************************************************************************************
+    This a 16-way set associative cache module. 
+ 	The cache can be used between a CPU Instruction Memory and Main Memory or
+ 	Secondary Cache. 
+ 	The cache uses following policies:
+ 	1. Module is configured to be used in Look-through Architecture
+ 	2. The module implements Fist In First Out (FIFO) policy for eviction of valid 
+       i.e if the cache fill order is 0,1,2,3,4,5,5,6,7,8 ...  During the
+       cache refill will be over-written in same order 0,1,2,3 ...
+
+ 	   The module inferres 2KB cache Memory and 16 Location TAG Memory
+ 	   The TAG RAM stores tag data as well as Valid, Dirty Bits.
+
+ 	   The Most significant bit is Valid bit in tag data
+ 	   block, and all other are TAG data bits.
+ 		----------------------------------------------------------------------
+ 		|Valid bit |        Tag Data
+ 		----------------------------------------------------------------------
+
+ 	States of Finite State Machine implemented for Cache
+ 	Controller and its basic explanation:
+    1. PREFILL: During power up, with prefill command, complete
+                2KB Cache memory will be refreshed with applicaton
+                memory and corresponding tag memory is updated
+
+
+ 	2. IDLE: This is a reset/default state of FSM. It waits for
+ 	         read or write command from CPU and when receives any,
+ 	         it latches the address and move to TAG_COMPARE state
+
+ 	3. TAG_COMPARE: 
+             This is a decision state for tag hit or miss in cache. 
+             If hit, 
+                  B1. As this interface only support read access.
+                      A2. Read the cache memory offset location.
+                      B2. Move to IDLE
+             If No hit, It moved to refill state.
+    4. CACHE_REFILL:
+ 		In this state, data will be filled from Main memory
+            to cache memory. 
+                  A1. As current cpu access is read, cache memory will be
+                      loaded with main memory data and once cpu request
+                      address is available data will be fed back to cpu
+                       with ack 
+   5.NEXT_CACHE_REFILL_REQ : If the next tag data is not available in
+            cache & application fsm is free, then put request for next tag
+            location prefetech. This can be disabled by cfg_ntag_pfet_dis
+
+ Assumptions:
+            1. Wishbone Support Burst Read access. 
+               To support is additional two signal added to wishbone i/f
+                  *_bl  - 8 Bit - Indicate Burst Word, 1 Indicate 1 word
+                          FF - 255 word
+                  *_lack- Indicate last ack of the busrt ack
+                  *_ack - Ack will be asserted for completion of each
+                  valid access
+ Memory organization
+       TAG Memory:
+              A1. Each location hold  20 bit of [26:7] cpu address
+              A2. Each location also has Valid bit 
+              A3. Dirtly bit indicate cache memory is locally modified. need
+                  to write back data during cache location flush.
+              A4. There are 16 Tag location corresponds to 16 cache line
+       Cache Memory: 2KB SRAM or 512 Word SRAM
+             16 Cache Line * 32 Cache Word = 512 Word = 2048 Byte
+             Cache Address : <tag offset[3:0]> <cache ptr[4:0]> 
+
+ CPU address decoding:
+      [1:0]   -  32 Bit Word
+      [6:2]   -  32 Cache Word
+      [26:7]  -  Tag comparsion
+      [31:27] - Unused
+      
+      With [26:0] access, cache can address up to 128MB Memory Space.
+
+  Note: Skywater SRAM has two port
+     port-0: Support both Write and Read - This port used for cache write
+             back and Refill purpose
+     port-1: Support Read access only - This port used to read tag hit
+             cache location data
+  To Do:                                                      
+    nothing
+                                                              
+  Author(s):                                                  
+          - Dinesh Annayya <dinesha@opencores.org>               
+          - Dinesh Annayya <dinesh@siplusplus.com>               
+                                                              
+  Revision :                                                  
+    0.1 - 19th Jan 2022, Dinesh A                             
+           Working initial version
+    0.2 - 20th Jan 2022, Dinesh A                             
+          moved the user cpu  wishbone interface to custom cpu interface and
+          bug fix around buswidth
+    0.3 - 13 Mar 2024, Dinesh A
+          direct icache write allowed for RVC/Fence Instruction
+
+ ***************************************************************************************************/
 
 `include "ycr_cache_defs.svh"
 
@@ -459,7 +457,7 @@ begin
       cache_prefill_req <= '0;
       cache_refill_addr <= '0;
 
-	  cache_mem_daddr0  <= '0;
+      cache_mem_daddr0  <= '0;
       cache_mem_dcsb0   <= '0;
       cache_mem_dweb0   <= '0;
       cache_mem_dwmask0 <= '0;

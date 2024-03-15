@@ -13,7 +13,7 @@
 // IPIC
 #define IRQ_LINES_ADDR              0xF0000100      // simulation
 #define TRIG_EXT_IRQ_ADDR           0xF0000100      // external irq is triggered when tb memory is set to non-zero
-#define TRIG_SW_IRQ_ADDR            0xF0000200      // software irq is triggered when tb memory is set to non-zero
+#define TRIG_SW_IRQ_ADDR            0x0C490030      // software irq is triggered when tb memory is set to non-zero
 
 #define IPIC_EOI                    0xBF4           // end of interrupt
 #define IPIC_SOI                    0xBF5           // start of interrupt

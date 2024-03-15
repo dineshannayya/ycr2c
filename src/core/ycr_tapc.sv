@@ -1,61 +1,60 @@
-//////////////////////////////////////////////////////////////////////////////
-// SPDX-FileCopyrightText: 2021, Dinesh Annayya                           ////
-//                                                                        ////
-// Licensed under the Apache License, Version 2.0 (the "License");        ////
-// you may not use this file except in compliance with the License.       ////
-// You may obtain a copy of the License at                                ////
-//                                                                        ////
-//      http://www.apache.org/licenses/LICENSE-2.0                        ////
-//                                                                        ////
-// Unless required by applicable law or agreed to in writing, software    ////
-// distributed under the License is distributed on an "AS IS" BASIS,      ////
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.///
-// See the License for the specific language governing permissions and    ////
-// limitations under the License.                                         ////
-// SPDX-License-Identifier: Apache-2.0                                    ////
-// SPDX-FileContributor: Dinesh Annayya <dinesha@opencores.org>           ////
-//////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////
-////                                                                      ////
-////  yifive TAP Controller (TAPC)                                        ////
-////                                                                      ////
-////  This file is part of the yifive cores project                       ////
-////  https://github.com/dineshannayya/ycr.git                           ////
-////                                                                      ////
-////  Description:                                                        ////
-////     TAP Controller (TAPC)                                            ////
-////                                                                      ////
-////  Functionality:                                                      ////
-////   - Controls TAP operation                                           ////
-////   - Allows debugger to access TAP Data registers and DMI/SCU         ////
-////     scan-chains via                                                  ////
-////     command written in Instruction register                          ////
-////                                                                      ////
-////  Structure:                                                          ////
-////   - Synchronous reset generation                                     ////
-////   - TAPC FSM                                                         ////
-////   - TAPC Instruction Registers                                       ////
-////   - TAPC DRs/DMI/SCU scan-chains                                     ////
-////   - TAPC TDO enable and output Registers                             ////
-////   - TAPC Data Registers                                              ////
-////     - BYPASS                                                         ////
-////     - IDCODE                                                         ////
-////     - BUILD ID                                                       ////
-////                                                                      ////
-////  To Do:                                                              ////
-////    nothing                                                           ////
-////                                                                      ////
-////  Author(s):                                                          ////
-////     - syntacore, https://github.com/syntacore/scr1                   ////
-////     - Dinesh Annayya, dinesha@opencores.org                          ////
-////                                                                      ////
-////  Revision :                                                          ////
-////     v0:    Jan 2021- Initial version picked from                     ////
-////            https://github.com/syntacore/scr1                         ////
-////     v1:    June 7, 2021, Dinesh A                                    ////
-////             opentool(iverilog/yosys) related cleanup                 ////
-////                                                                      ////
-//////////////////////////////////////////////////////////////////////////////
+/*****************************************************************************************************
+ * Copyright (c) 2024 SiPlusPlus Semiconductor
+ *
+ * FileContributor: Dinesh Annayya <dinesha@opencores.org>                       
+ * FileContributor: Dinesh Annayya <dinesh@siplusplus.com>                       
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ ***************************************************************************************************/
+/****************************************************************************************************
+      yifive TAP Controller (TAPC)                                        
+                                                                          
+                                                                          
+      Description:                                                        
+         TAP Controller (TAPC)                                            
+                                                                          
+      Functionality:                                                      
+       - Controls TAP operation                                           
+       - Allows debugger to access TAP Data registers and DMI/SCU         
+         scan-chains via                                                  
+         command written in Instruction register                          
+                                                                          
+      Structure:                                                          
+       - Synchronous reset generation                                     
+       - TAPC FSM                                                         
+       - TAPC Instruction Registers                                       
+       - TAPC DRs/DMI/SCU scan-chains                                     
+       - TAPC TDO enable and output Registers                             
+       - TAPC Data Registers                                              
+         - BYPASS                                                         
+         - IDCODE                                                         
+         - BUILD ID                                                       
+                                                                          
+      To Do:                                                              
+        nothing                                                           
+                                                                          
+  Author(s):                                                  
+          - syntacore, https://github.com/syntacore/scr1                   
+          - Dinesh Annayya <dinesha@opencores.org>               
+          - Dinesh Annayya <dinesh@siplusplus.com>               
+                                                                          
+      Revision :                                                          
+         v0:    Jan 2021- Initial version picked from                     
+                https://github.com/syntacore/scr1                         
+         v1:    June 7, 2021, Dinesh A                                    
+                 opentool(iverilog/yosys) related cleanup                 
+                                                                          
+ ***************************************************************************************************/
 
 
 `include "ycr_arch_description.svh"

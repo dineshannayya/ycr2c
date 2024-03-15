@@ -1,58 +1,57 @@
-//////////////////////////////////////////////////////////////////////////////
-// SPDX-FileCopyrightText: 2021, Dinesh Annayya                           ////
-//                                                                        ////
-// Licensed under the Apache License, Version 2.0 (the "License");        ////
-// you may not use this file except in compliance with the License.       ////
-// You may obtain a copy of the License at                                ////
-//                                                                        ////
-//      http://www.apache.org/licenses/LICENSE-2.0                        ////
-//                                                                        ////
-// Unless required by applicable law or agreed to in writing, software    ////
-// distributed under the License is distributed on an "AS IS" BASIS,      ////
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.///
-// See the License for the specific language governing permissions and    ////
-// limitations under the License.                                         ////
-// SPDX-License-Identifier: Apache-2.0                                    ////
-// SPDX-FileContributor: Dinesh Annayya <dinesha@opencores.org>           ////
-//////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////
-////                                                                      ////
-////  yifive Load/Store Unit (LSU)                                        ////
-////                                                                      ////
-////  This file is part of the yifive cores project                       ////
-////  https://github.com/dineshannayya/ycr.git                           ////
-////                                                                      ////
-////  Description:                                                        ////
-////     Load/Store Unit (LSU)                                            ////
-////                                                                      ////
-//// Functionality:                                                       ////
-//// - Performs load and store operations in Data Memory                  ////
-//// - Generates DMEM address misalign and access fault exceptions        ////
-//// - Passes DMEM operations information to TDU and generates LSU        ////
-////   breakpoint exception                                               ////
-////                                                                      ////
-//// Structure:                                                           ////
-//// - FSM                                                                ////
-//// - Exceptions logic                                                   ////
-//// - LSU <-> EXU interface                                              ////
-//// - LSU <-> DMEM interface                                             ////
-//// - LSU <-> TDU interface                                              ////
-///                                                                       ////
-////                                                                      ////
-////  To Do:                                                              ////
-////    nothing                                                           ////
-////                                                                      ////
-////  Author(s):                                                          ////
-////     - syntacore, https://github.com/syntacore/scr1                   ////
-////     - Dinesh Annayya, dinesha@opencores.org                          ////
-////                                                                      ////
-////  Revision :                                                          ////
-////     v0:    Jan 2021- Initial version picked from                     ////
-////            https://github.com/syntacore/scr1                         ////
-////     v1:    June 7, 2021, Dinesh A                                    ////
-////             opentool(iverilog/yosys) related cleanup                 ////
-////                                                                      ////
-//////////////////////////////////////////////////////////////////////////////
+/*****************************************************************************************************
+ * Copyright (c) 2024 SiPlusPlus Semiconductor
+ *
+ * FileContributor: Dinesh Annayya <dinesha@opencores.org>                       
+ * FileContributor: Dinesh Annayya <dinesh@siplusplus.com>                       
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ ***************************************************************************************************/
+/****************************************************************************************************
+  yifive Load/Store Unit (LSU)                                        
+                                                                      
+                                                                      
+  Description:                                                        
+     Load/Store Unit (LSU)                                            
+                                                                      
+ Functionality:                                                       
+ - Performs load and store operations in Data Memory                  
+ - Generates DMEM address misalign and access fault exceptions        
+ - Passes DMEM operations information to TDU and generates LSU        
+   breakpoint exception                                               
+                                                                      
+ Structure:                                                           
+ - FSM                                                                
+ - Exceptions logic                                                   
+ - LSU <-> EXU interface                                              
+ - LSU <-> DMEM interface                                             
+ - LSU <-> TDU interface                                              
+                                                                      
+                                                                      
+  To Do:                                                              
+    nothing                                                           
+
+  Author(s):                                                  
+          - syntacore, https://github.com/syntacore/scr1                   
+          - Dinesh Annayya <dinesha@opencores.org>               
+          - Dinesh Annayya <dinesh@siplusplus.com>               
+                                                                      
+  Revision :                                                          
+     v0:    Jan 2021- Initial version picked from                     
+            https://github.com/syntacore/scr1                         
+     v1:    June 7, 2021, Dinesh A                                    
+             opentool(iverilog/yosys) related cleanup                 
+                                                                      
+ ***************************************************************************************************/
 
 `include "ycr_arch_description.svh"
 `include "ycr_arch_types.svh"
