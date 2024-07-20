@@ -260,7 +260,7 @@ assign clk_o = clk;
 //--------------------------------------------
 ctech_clk_buf u_skew_core_clk
        (
-	    .A              (core_clk_int            ), 
+	    .A               (core_clk_int            ), 
 	    .X              (core_clk_skew           ) 
        );
 

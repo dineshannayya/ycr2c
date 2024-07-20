@@ -541,6 +541,10 @@ dbg_port  #(.DEBUG_WD(64),.DEBUG_OFFSET(DBG_CORE1_OFFSET)) u_debug1(
          .dbg_so     (dbg_so           )
        );
 
+`else
+
+assign riscv_debug = (core_debug_sel == 2'b00) ? riscv_debug0 : riscv_debug1 ;
+
 `endif
 
 assign cfg_dcache_force_flush   = riscv_glbl_cfg[0];
@@ -573,7 +577,7 @@ ctech_mux2x1 u_cclk_cts  (.A0(core_clk_g), .A1(1'b0), .S(1'b0), .X(core_clk_cts)
 //--------------------------------------------
 ctech_clk_buf u_skew_core_clk
        (
-	    .A               (core_clk_int            ), 
+	    .A              (core_clk_int            ), 
 	    .X              (core_clk_skew           ) 
        );
 
@@ -598,7 +602,6 @@ ycr_reset_sync_cell #(
 assign core0_uid = 2'b00;
 assign core1_uid = 2'b01;
 
-assign riscv_debug = (core_debug_sel == 2'b00) ? riscv_debug0 : riscv_debug1 ;
 
 
 ycr2_cross_bar u_crossbar (
